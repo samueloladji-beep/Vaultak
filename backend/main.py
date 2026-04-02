@@ -84,3 +84,11 @@ def list_agents(db=Depends(get_db), _=Depends(verify_api_key)):
 def list_alerts(db=Depends(get_db), _=Depends(verify_api_key)):
     rows = db.execute("SELECT * FROM alerts ORDER BY created_at DESC LIMIT 50").fetchall()
     return [dict(r) for r in rows]
+
+from fastapi.responses import FileResponse
+import os
+
+@app.get("/")
+def landing():
+    index_path = os.path.join(os.path.dirname(__file__), "..", "index.html")
+    return FileResponse(index_path)
