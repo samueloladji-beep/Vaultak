@@ -1,7 +1,7 @@
 import os, json, uuid, hashlib, secrets
 from typing import Any, Dict, List, Optional
-import psycopg2
-import psycopg2.extras
+import psycopg
+import psycopg.extras
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -13,14 +13,14 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 ADMIN_KEY = os.environ.get("ADMIN_KEY", "admin-change-me")
 
 def get_db():
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+    conn = psycopg.connect(DATABASE_URL, row_factory=psycopg.rows.dict_row)
     try:
         yield conn
     finally:
         conn.close()
 
 def init_db():
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = psycopg.connect(DATABASE_URL)
     cur = conn.cursor()
     cur.execute("""CREATE TABLE IF NOT EXISTS organizations (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, slug TEXT UNIQUE NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())""")
     cur.execute("""CREATE TABLE IF NOT EXISTS api_keys (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE, key_hash TEXT UNIQUE NOT NULL, key_prefix TEXT NOT NULL, name TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW(), last_used TIMESTAMPTZ)""")
