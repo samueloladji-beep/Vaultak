@@ -167,3 +167,13 @@ def get_stats(org_id: str = Depends(get_org), db=Depends(get_db)):
         cur.execute("SELECT COUNT(*) FILTER (WHERE risk_score >= 0.75) as critical, COUNT(*) FILTER (WHERE risk_score >= 0.5 AND risk_score < 0.75) as high, COUNT(*) FILTER (WHERE risk_score >= 0.25 AND risk_score < 0.5) as medium, COUNT(*) FILTER (WHERE risk_score < 0.25) as low FROM actions WHERE org_id = %s", (org_id,))
         dist = dict(cur.fetchone())
     return {"total_agents": total_agents, "paused_agents": paused_agents, "total_actions": total_actions, "flagged_actions": flagged_actions, "active_alerts": active_alerts, "risk_distribution": {k: (v or 0) for k, v in dist.items()}}
+
+from fastapi.responses import FileResponse
+import os
+
+@app.get("/")
+def serve_landing():
+    index_path = os.path.join(os.path.dirname(__file__), "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"status": "ok", "service": "Vaultak API"}
