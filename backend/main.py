@@ -221,7 +221,7 @@ def compute_risk_score(
     org_id: str,
     db,
     provided_score: Optional[float] = None
-) -> tuple[float, dict]:
+):
     """Compute weighted 5-dimension risk score."""
     # If SDK provides a score, blend it with our engine (60% ours, 40% SDK)
     d1 = score_action_type(action_type)
