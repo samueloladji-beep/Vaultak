@@ -177,3 +177,27 @@ def serve_landing():
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {"status": "ok", "service": "Vaultak API"}
+
+@app.post("/api/onboard")
+def onboard_user(
+    x_clerk_user_id: Optional[str] = Header(None),
+    x_user_email: Optional[str] = Header(None),
+    db=Depends(get_db)
+):
+    if not x_clerk_user_id:
+        raise HTTPException(status_code=401, detail="Missing user ID")
+    slug = x_clerk_user_id.replace("user_", "")[:20]
+    name = x_user_email.split("@")[0] if x_user_email else slug
+    with db.cursor() as cur:
+        cur.execute("SELECT id FROM organizations WHERE slug = %s", (slug,))
+        existing = cur.fetchone()
+        if existing:
+            cur.execute("SELECT key_prefix FROM api_keys WHERE org_id = %s", (str(existing["id"]),))
+            key = cur.fetchone()
+            return {"org_id": str(existing["id"]), "already_exists": True, "key_prefix": key["key_prefix"] if key else None}
+        cur.execute("INSERT INTO organizations (name, slug) VALUES (%s, %s) RETURNING id", (name, slug))
+        org_id = str(cur.fetchone()["id"])
+        raw_key = f"vtk_{secrets.token_urlsafe(32)}"
+        cur.execute("INSERT INTO api_keys (org_id, key_hash, key_prefix, name) VALUES (%s, %s, %s, %s)", (org_id, hash_key(raw_key), raw_key[:12], "default"))
+        db.commit()
+    return {"org_id": org_id, "api_key": raw_key, "already_exists": False}
