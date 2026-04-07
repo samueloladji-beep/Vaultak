@@ -711,18 +711,12 @@ footer {
 <!-- FOOTER -->
 <footer>
   <div class="footer-inner">
-    <div class="footer-logo">
-      <div class="nav-logo-mark" style="width:20px;height:20px;">
-        <svg viewBox="0 0 14 14" fill="none" style="width:11px;height:11px;">
-          <circle cx="7" cy="7" r="5.5" stroke="#000" stroke-width="1.5"/>
-          <line x1="7" y1="2" x2="7" y2="12" stroke="#000" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </div>
-      Vaultak · v0.1.0
-    </div>
+    <div class="footer-logo">Vaultak · v0.5.1</div>
     <div class="footer-links">
-      <a href="https://vaultak.com/health" target="_blank">API Status</a>
-      
+      <a href="https://docs.vaultak.com" target="_blank">Docs</a>
+      <a href="https://vaultak.com/status" target="_blank">Status</a>
+      <a href="https://vaultak.com/security" target="_blank">Security</a>
+      <a href="https://app.vaultak.com" target="_blank">Dashboard</a>
     </div>
   </div>
 </footer>
@@ -750,7 +744,7 @@ function submitToMailchimp(email, msgId, inputId) {
   form.submit();
   document.body.removeChild(form);
   msg.style.color = '#4ade80';
-  msg.textContent = "You're on the list! We'll be in touch within 24 hours.";
+  msg.textContent = "You're on the list! Check your email for your access details.";
   document.getElementById(inputId).value = '';
   document.getElementById(inputId).disabled = true;
 }
