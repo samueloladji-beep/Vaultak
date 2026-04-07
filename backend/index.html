@@ -501,18 +501,23 @@ footer {
 }
 .footer-inner {
   max-width: 1080px; margin: 0 auto;
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 48px;
 }
 .footer-logo {
   display: flex; align-items: center; gap: 8px;
   font-size: 14px; font-weight: 500;
   color: var(--text2);
 }
+.footer-tagline { font-size: 12px; color: var(--text3); margin-top: 6px; max-width: 200px; line-height: 1.5; }
+.footer-cols { display: flex; gap: 48px; }
+.footer-col-title { font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 14px; }
+.footer-col a { display: block; font-size: 13px; color: var(--text3); text-decoration: none; transition: color 0.15s; font-weight: 300; margin-bottom: 10px; }
+.footer-col a:hover { color: var(--text2); }
+.footer-bottom { max-width: 1080px; margin: 24px auto 0; padding-top: 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.footer-bottom-text { font-size: 12px; color: var(--text3); }
 .footer-links { display: flex; gap: 28px; }
-.footer-links a {
-  font-size: 13px; color: var(--text3);
-  text-decoration: none; transition: color 0.15s; font-weight: 300;
-}
+.footer-links a { font-size: 13px; color: var(--text3); text-decoration: none; transition: color 0.15s; font-weight: 300; }
 .footer-links a:hover { color: var(--text2); }
 
 @keyframes fadeUp {
@@ -710,12 +715,40 @@ footer {
 <!-- FOOTER -->
 <footer>
   <div class="footer-inner">
-    <div class="footer-logo">Vaultak · v0.5.1</div>
+    <div>
+      <div class="footer-logo">Vaultak · v0.5.1</div>
+      <div class="footer-tagline">Runtime security for autonomous AI agents.</div>
+    </div>
+    <div class="footer-cols">
+      <div class="footer-col">
+        <div class="footer-col-title">Product</div>
+        <a href="https://docs.vaultak.com">Docs</a>
+        <a href="https://vaultak.com/pricing">Pricing</a>
+        <a href="https://app.vaultak.com">Dashboard</a>
+        <a href="https://vaultak.com/status">Status</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Company</div>
+        <a href="https://vaultak.com/about">About</a>
+        <a href="https://vaultak.com/security">Security</a>
+        <a href="https://vaultak.com/privacy">Privacy Policy</a>
+        <a href="https://vaultak.com/terms">Terms of Service</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Developers</div>
+        <a href="https://docs.vaultak.com/quickstart">Quickstart</a>
+        <a href="https://docs.vaultak.com/api-reference">API Reference</a>
+        <a href="https://pypi.org/project/vaultak" target="_blank">PyPI</a>
+        <a href="https://github.com/samueloladji-beep/Vaultak" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-bottom-text">© 2026 Vaultak. All rights reserved.</div>
     <div class="footer-links">
-      <a href="https://docs.vaultak.com" target="_blank">Docs</a>
-      <a href="https://vaultak.com/status" target="_blank">Status</a>
-      <a href="https://vaultak.com/security" target="_blank">Security</a>
-      <a href="https://app.vaultak.com" target="_blank">Dashboard</a>
+      <a href="https://vaultak.com/privacy">Privacy</a>
+      <a href="https://vaultak.com/terms">Terms</a>
+      <a href="mailto:security@vaultak.com">security@vaultak.com</a>
     </div>
   </div>
 </footer>
