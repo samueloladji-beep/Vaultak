@@ -618,7 +618,7 @@ footer {
     <div class="step-card">
       <div class="step-index">02</div>
       <div class="step-title">Instrument actions</div>
-      <div class="step-body">Wrap each agent action with <code>breaker.watch()</code>. Every file write, API call, and database query is intercepted, scored for risk, and logged in real time.</div>
+      <div class="step-body">Wrap your agent session with <code>vt.monitor()</code>. Every file write, API call, and database query is intercepted, scored for risk, and logged in real time.</div>
     </div>
     <div class="step-card">
       <div class="step-index">03</div>
@@ -650,19 +650,18 @@ footer {
         <span class="code-file">agent.py</span>
       </div>
       <div class="code-content">
-        <div><span class="ck">from</span> <span class="cv">vaultak</span> <span class="ck">import</span> <span class="cf">Vaultak</span></div>
-        <div><span class="ck">from</span> <span class="cv">vaultak.models</span> <span class="ck">import</span> <span class="cf">AgentConfig</span></div>
+        <div><span class="ck">from</span> <span class="cv">vaultak</span> <span class="ck">import</span> <span class="cf">Vaultak</span>, <span class="cf">KillSwitchMode</span></div>
         <br>
         <div><span class="cc"># Configure once per agent</span></div>
-        <div><span class="cv">breaker</span> = <span class="cf">Vaultak</span>(<span class="cf">AgentConfig</span>(</div>
-        <div>&nbsp;&nbsp;<span class="cv">agent_id</span>=<span class="cs">"analyst-001"</span>,</div>
-        <div>&nbsp;&nbsp;<span class="cv">kill_switch_mode</span>=<span class="cs">"pause"</span>,</div>
-        <div>&nbsp;&nbsp;<span class="cv">blocked_resources</span>=[<span class="cs">"production"</span>],</div>
-        <div>))</div>
+        <div><span class="cv">vt</span> = <span class="cf">Vaultak</span>(</div>
+        <div>&nbsp;&nbsp;<span class="cv">api_key</span>=<span class="cs">"vtk_..."</span>,</div>
+        <div>&nbsp;&nbsp;<span class="cv">blocked_resources</span>=[<span class="cs">"prod.*"</span>],</div>
+        <div>&nbsp;&nbsp;<span class="cv">max_risk_score</span>=<span class="cs">0.7</span>,</div>
+        <div>&nbsp;&nbsp;<span class="cv">mode</span>=<span class="cf">KillSwitchMode</span>.<span class="cv">PAUSE</span>,</div>
+        <div>)</div>
         <br>
-        <div><span class="cc"># Wrap every agent action</span></div>
-        <div><span class="ck">with</span> <span class="cv">breaker</span>.<span class="cf">watch</span>(<span class="cs">"database_write"</span>,</div>
-        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cv">resource</span>=<span class="cs">"production_db"</span>):</div>
+        <div><span class="cc"># Wrap your entire agent session</span></div>
+        <div><span class="ck">with</span> <span class="cv">vt</span>.<span class="cf">monitor</span>(<span class="cs">"analyst-001"</span>):</div>
         <div>&nbsp;&nbsp;<span class="cf">execute_query</span>(...)</div>
         <br>
         <div><span class="ca">→ Agent paused. Risk: 0.89</span></div>
