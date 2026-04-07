@@ -11,7 +11,7 @@ from pydantic import BaseModel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("vaultak")
 
-app = FastAPI(title="Vaultak API", version="0.3.0")
+app = FastAPI(title="Vaultak API", version="0.4.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
@@ -104,6 +104,22 @@ def init_db():
                 reason TEXT,
                 initiated_by TEXT DEFAULT 'system',
                 status TEXT DEFAULT 'completed',
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )""")
+            conn.commit()
+            cur.execute("""CREATE TABLE IF NOT EXISTS policies (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                action_type TEXT,
+                resource_pattern TEXT,
+                effect TEXT NOT NULL DEFAULT 'block',
+                max_risk_score REAL,
+                time_start INTEGER,
+                time_end INTEGER,
+                days_allowed TEXT[],
+                priority INTEGER DEFAULT 0,
+                enabled BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )""")
             conn.commit()
@@ -221,7 +237,7 @@ def compute_risk_score(
     org_id: str,
     db,
     provided_score: Optional[float] = None
-):
+) -> tuple[float, dict]:
     """Compute weighted 5-dimension risk score."""
     # If SDK provides a score, blend it with our engine (60% ours, 40% SDK)
     d1 = score_action_type(action_type)
@@ -639,3 +655,170 @@ def onboard_user(
 def serve_favicon():
     favicon_path = os.path.join(os.path.dirname(__file__), "favicon.svg")
     return FileResponse(favicon_path, media_type="image/svg+xml")
+
+# ─── Policy Engine ─────────────────────────────────────────────────────────────
+
+import fnmatch
+from datetime import datetime, timezone
+
+class PolicyCheck(BaseModel):
+    agent_id: str
+    action_type: str
+    resource: Optional[str] = ""
+    payload: Optional[Dict[str, Any]] = None
+
+class PolicyCreate(BaseModel):
+    name: str
+    action_type: Optional[str] = None
+    resource_pattern: Optional[str] = None
+    effect: str = "block"
+    max_risk_score: Optional[float] = None
+    time_start: Optional[int] = None
+    time_end: Optional[int] = None
+    days_allowed: Optional[List[str]] = None
+    priority: int = 0
+
+def evaluate_policies(policies: list, action_type: str, resource: str, risk_score: float) -> dict:
+    """Evaluate all policies and return the highest priority matching one."""
+    now = datetime.now(timezone.utc)
+    current_hour = now.hour
+    current_day = now.strftime("%A").lower()
+
+    matched_policies = []
+
+    for policy in policies:
+        if not policy.get("enabled"):
+            continue
+
+        # Check action_type match
+        if policy.get("action_type"):
+            if not fnmatch.fnmatch(action_type.lower(), policy["action_type"].lower()):
+                continue
+
+        # Check resource pattern match
+        if policy.get("resource_pattern"):
+            if not fnmatch.fnmatch((resource or "").lower(), policy["resource_pattern"].lower()):
+                continue
+
+        # Check time window
+        if policy.get("time_start") is not None and policy.get("time_end") is not None:
+            if not (policy["time_start"] <= current_hour < policy["time_end"]):
+                continue
+
+        # Check days allowed
+        if policy.get("days_allowed"):
+            if current_day not in [d.lower() for d in policy["days_allowed"]]:
+                continue
+
+        # Check max risk score
+        if policy.get("max_risk_score") is not None:
+            if risk_score > policy["max_risk_score"]:
+                matched_policies.append(policy)
+                continue
+
+        matched_policies.append(policy)
+
+    if not matched_policies:
+        return {"decision": "allow", "policy": None, "reason": "No matching policies"}
+
+    # Sort by priority (highest first)
+    matched_policies.sort(key=lambda p: p.get("priority", 0), reverse=True)
+    top = matched_policies[0]
+
+    return {
+        "decision": top["effect"],
+        "policy": top,
+        "reason": f"Policy '{top['name']}' matched (effect: {top['effect']})"
+    }
+
+@app.post("/api/check")
+def check_action(body: PolicyCheck, org_id: str = Depends(get_org), db=Depends(get_db)):
+    """Pre-execution check — call this BEFORE running an agent action."""
+    try:
+        # Compute risk score first
+        risk_score, breakdown = compute_risk_score(
+            action_type=body.action_type,
+            resource=body.resource or "",
+            payload=body.payload or {},
+            agent_id=body.agent_id,
+            org_id=org_id,
+            db=db
+        )
+
+        # Check if agent is paused
+        with db.cursor() as cur:
+            cur.execute("SELECT paused, terminated, kill_switch_mode FROM agents WHERE org_id = %s AND agent_id = %s", (org_id, body.agent_id))
+            agent = cur.fetchone()
+
+        if agent:
+            if agent["terminated"]:
+                return {"decision": "block", "reason": "Agent is terminated", "risk_score": risk_score, "risk_breakdown": breakdown}
+            if agent["paused"]:
+                return {"decision": "block", "reason": "Agent is paused", "risk_score": risk_score, "risk_breakdown": breakdown}
+
+        # Load org policies
+        with db.cursor() as cur:
+            cur.execute("SELECT * FROM policies WHERE org_id = %s AND enabled = TRUE ORDER BY priority DESC", (org_id,))
+            policies = [dict(r) for r in cur.fetchall()]
+
+        # Evaluate policies
+        result = evaluate_policies(policies, body.action_type, body.resource or "", risk_score)
+
+        # Auto-block critical risk even without explicit policy
+        if risk_score >= 0.90 and result["decision"] == "allow":
+            result = {
+                "decision": "block",
+                "policy": None,
+                "reason": f"Auto-blocked: critical risk score {risk_score:.2f}"
+            }
+
+        return {
+            "decision": result["decision"],
+            "reason": result["reason"],
+            "risk_score": risk_score,
+            "risk_breakdown": breakdown,
+            "policy_matched": result["policy"]["name"] if result["policy"] else None,
+            "agent_id": body.agent_id,
+            "action_type": body.action_type,
+            "resource": body.resource
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Policy check error: {e}")
+        raise HTTPException(status_code=500, detail="Policy check failed")
+
+@app.get("/api/policies")
+def get_policies(org_id: str = Depends(get_org), db=Depends(get_db)):
+    with db.cursor() as cur:
+        cur.execute("SELECT * FROM policies WHERE org_id = %s ORDER BY priority DESC, created_at DESC", (org_id,))
+        return [dict(r) for r in cur.fetchall()]
+
+@app.post("/api/policies")
+def create_policy(body: PolicyCreate, org_id: str = Depends(get_org), db=Depends(get_db)):
+    with db.cursor() as cur:
+        cur.execute("""
+            INSERT INTO policies (org_id, name, action_type, resource_pattern, effect,
+                max_risk_score, time_start, time_end, days_allowed, priority)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING *
+        """, (org_id, body.name, body.action_type, body.resource_pattern, body.effect,
+              body.max_risk_score, body.time_start, body.time_end,
+              body.days_allowed, body.priority))
+        policy = dict(cur.fetchone())
+        db.commit()
+    return policy
+
+@app.patch("/api/policies/{policy_id}")
+def update_policy(policy_id: str, enabled: bool, org_id: str = Depends(get_org), db=Depends(get_db)):
+    with db.cursor() as cur:
+        cur.execute("UPDATE policies SET enabled = %s WHERE id = %s AND org_id = %s", (enabled, policy_id, org_id))
+        db.commit()
+    return {"updated": True}
+
+@app.delete("/api/policies/{policy_id}")
+def delete_policy(policy_id: str, org_id: str = Depends(get_org), db=Depends(get_db)):
+    with db.cursor() as cur:
+        cur.execute("DELETE FROM policies WHERE id = %s AND org_id = %s", (policy_id, org_id))
+        db.commit()
+    return {"deleted": True}
