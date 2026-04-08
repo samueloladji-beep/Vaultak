@@ -1331,6 +1331,7 @@ def sitemap():
   <url><loc>https://vaultak.com/blog/how-to-secure-langchain-agents</loc><priority>0.8</priority></url>
   <url><loc>https://vaultak.com/blog/ai-agent-hipaa-soc2-compliance</loc><priority>0.8</priority></url>
   <url><loc>https://vaultak.com/blog/why-your-ai-agent-needs-a-kill-switch</loc><priority>0.8</priority></url>
+  <url><loc>https://vaultak.com/whitepaper</loc><priority>0.9</priority></url>
 </urlset>"""
     return Response(content=xml, media_type="application/xml")
 
