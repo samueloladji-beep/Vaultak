@@ -1329,6 +1329,36 @@ def sitemap():
 </urlset>"""
     return Response(content=xml, media_type="application/xml")
 
+@app.get("/sitemap.xml")
+def sitemap():
+    from fastapi.responses import Response
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://vaultak.com/</loc><priority>1.0</priority></url>
+  <url><loc>https://vaultak.com/pricing</loc><priority>0.9</priority></url>
+  <url><loc>https://vaultak.com/about</loc><priority>0.8</priority></url>
+  <url><loc>https://vaultak.com/security</loc><priority>0.8</priority></url>
+  <url><loc>https://vaultak.com/status</loc><priority>0.7</priority></url>
+  <url><loc>https://vaultak.com/privacy</loc><priority>0.6</priority></url>
+  <url><loc>https://vaultak.com/terms</loc><priority>0.6</priority></url>
+</urlset>"""
+    return Response(content=xml, media_type="application/xml")
+
+@app.get("/sitemap.xml")
+def sitemap():
+    from fastapi.responses import Response
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://vaultak.com/</loc><priority>1.0</priority></url>
+  <url><loc>https://vaultak.com/pricing</loc><priority>0.9</priority></url>
+  <url><loc>https://vaultak.com/about</loc><priority>0.8</priority></url>
+  <url><loc>https://vaultak.com/security</loc><priority>0.8</priority></url>
+  <url><loc>https://vaultak.com/status</loc><priority>0.7</priority></url>
+  <url><loc>https://vaultak.com/privacy</loc><priority>0.6</priority></url>
+  <url><loc>https://vaultak.com/terms</loc><priority>0.6</priority></url>
+</urlset>"""
+    return Response(content=xml, media_type="application/xml")
+
 @app.get("/favicon.svg")
 def serve_favicon():
     favicon_path = os.path.join(os.path.dirname(__file__), "favicon.svg")
