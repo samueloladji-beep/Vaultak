@@ -23,19 +23,23 @@ ADMIN_KEY = os.environ.get("ADMIN_KEY", "admin-change-me")
 
 def get_db():
     retries = 3
+    conn = None
     for attempt in range(retries):
         try:
             conn = psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=10)
-            try:
-                yield conn
-            finally:
-                conn.close()
-            return
+            break
         except Exception as e:
             if attempt == retries - 1:
                 logger.error(f"Database connection failed after {retries} attempts: {e}")
                 raise HTTPException(status_code=503, detail="Database unavailable")
             time.sleep(1)
+    try:
+        yield conn
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 def init_db():
     with psycopg.connect(DATABASE_URL) as conn:
