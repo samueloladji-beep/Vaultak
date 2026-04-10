@@ -61,7 +61,7 @@ jobs:
 
   build-macos-intel:
     name: macOS (Intel)
-    runs-on: macos-13
+    runs-on: macos-13-xlarge
     steps:
       - uses: actions/checkout@v4
 
@@ -122,28 +122,17 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          cd sentry-app
-          pip install pyinstaller requests
+        working-directory: sentry-app
+        run: pip install pyinstaller requests
 
       - name: Build
+        working-directory: sentry-app
         run: |
-          cd sentry-app
-          python -m PyInstaller `
-            --name "Vaultak Sentry" `
-            --windowed `
-            --onedir `
-            --noconfirm `
-            --icon "assets/icon.icns" `
-            --add-data "assets;assets" `
-            --hidden-import "tkinter" `
-            --hidden-import "requests" `
-            vaultak_sentry_app.py
+          python -m PyInstaller --name "Vaultak Sentry" --windowed --onedir --noconfirm --icon "assets/icon.icns" --add-data "assets;assets" --hidden-import "tkinter" --hidden-import "requests" vaultak_sentry_app.py
 
       - name: Zip output
-        run: |
-          cd sentry-app/dist
-          Compress-Archive -Path "Vaultak Sentry" -DestinationPath "VaultakSentry-1.0.0-windows.zip"
+        working-directory: sentry-app/dist
+        run: Compress-Archive -Path "Vaultak Sentry" -DestinationPath "VaultakSentry-1.0.0-windows.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
