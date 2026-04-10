@@ -61,7 +61,7 @@ jobs:
 
   build-macos-intel:
     name: macOS (Intel)
-    runs-on: macos-13-xlarge
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
 
@@ -128,7 +128,7 @@ jobs:
       - name: Build
         working-directory: sentry-app
         run: |
-          python -m PyInstaller --name "Vaultak Sentry" --windowed --onedir --noconfirm --icon "assets/icon.icns" --add-data "assets;assets" --hidden-import "tkinter" --hidden-import "requests" vaultak_sentry_app.py
+          python -m PyInstaller --name "Vaultak Sentry" --windowed --onedir --noconfirm --icon "assets/icon.ico" --add-data "assets;assets" --hidden-import "tkinter" --hidden-import "requests" vaultak_sentry_app.py
 
       - name: Zip output
         working-directory: sentry-app/dist
