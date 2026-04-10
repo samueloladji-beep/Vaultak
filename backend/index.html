@@ -628,19 +628,19 @@ footer {
   <h2 class="section-heading">Operational in minutes.<br><em>Control that scales.</em></h2>
   <div class="steps-grid">
     <div class="step-card">
-      <div class="step-index">01</div>
-      <div class="step-title">Install the SDK</div>
-      <div class="step-body">One command: <code>pip install vaultak</code>. Zero external dependencies. Works with LangChain, AutoGen, CrewAI, and any custom agent framework.</div>
+      <div class="step-index" style="background:rgba(99,88,255,0.15);color:#a89fe0;">Core</div>
+      <div class="step-title">Vaultak Core &mdash; SDK integration</div>
+      <div class="step-body">Install with <code>pip install vaultak</code> and wrap your agent with five lines of code. Deep integration with custom rollback callbacks and full programmatic control.</div>
     </div>
     <div class="step-card">
-      <div class="step-index">02</div>
-      <div class="step-title">Instrument actions</div>
-      <div class="step-body">Wrap your agent session with <code>vt.monitor()</code>. Every file write, API call, and database query is intercepted, scored for risk, and logged in real time.</div>
+      <div class="step-index" style="background:rgba(20,200,180,0.12);color:#4ade80;">Sentry</div>
+      <div class="step-title">Vaultak Sentry &mdash; Zero-code daemon</div>
+      <div class="step-body">Install with <code>pip install vaultak-sentry</code> and run any agent through Sentry. No code changes. Works with any language, any framework, any existing agent.</div>
     </div>
     <div class="step-card">
       <div class="step-index">03</div>
-      <div class="step-title">Enforce your policy</div>
-      <div class="step-body">Set blocked resources, risk thresholds, and response modes. Vaultak enforces your governance policy automatically — alert, pause, or roll back any action.</div>
+      <div class="step-title">One dashboard. Both products.</div>
+      <div class="step-body">Every action from Core and Sentry flows into the same real-time dashboard. One API key. One audit trail. One place to manage policies across all your agents.</div>
     </div>
   </div>
 </section>
@@ -650,23 +650,30 @@ footer {
   <div class="code-inner">
     <div class="code-left">
       <div class="section-label">Integration</div>
-      <h2 class="section-heading" style="max-width:400px;">Three lines.<br><em>Complete</em> control.</h2>
-      <p class="code-desc">Drop Vaultak into any agent pipeline. No infrastructure changes. No model modifications. Just governance.</p>
-      <ul class="feature-list">
-        <li>Risk scoring across five behavioral dimensions</li>
-        <li>Automatic baseline learning over the first 50 actions</li>
-        <li>Full audit trail with human-readable explanations</li>
-        <li>Real-time dashboard with live agent monitoring</li>
-      </ul>
+      <h2 class="section-heading" style="max-width:440px;">Two ways in.<br><em>Zero</em> compromise.</h2>
+      <p class="code-desc">Use Vaultak Core for deep SDK integration or Vaultak Sentry for zero-code deployment. Both connect to the same dashboard.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:20px;">
+        <div style="background:rgba(99,88,255,0.08);border:1px solid rgba(99,88,255,0.2);border-radius:10px;padding:14px 18px;">
+          <div style="font-size:11px;font-family:monospace;color:#a89fe0;letter-spacing:.1em;margin-bottom:6px;">VAULTAK CORE</div>
+          <div style="font-size:13px;color:#8a8695;line-height:1.6;">pip install vaultak &nbsp;&middot;&nbsp; Five lines of code &nbsp;&middot;&nbsp; Deep integration</div>
+        </div>
+        <div style="background:rgba(20,200,180,0.06);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:14px 18px;">
+          <div style="font-size:11px;font-family:monospace;color:#4ade80;letter-spacing:.1em;margin-bottom:6px;">VAULTAK SENTRY</div>
+          <div style="font-size:13px;color:#8a8695;line-height:1.6;">pip install vaultak-sentry &nbsp;&middot;&nbsp; Zero code changes &nbsp;&middot;&nbsp; Any language</div>
+        </div>
+      </div>
     </div>
     <div class="code-window">
       <div class="code-titlebar">
         <div class="dot dot-r"></div>
         <div class="dot dot-y"></div>
         <div class="dot dot-g"></div>
-        <span class="code-file">agent.py</span>
+        <div style="display:flex;gap:0;margin-left:8px;">
+          <span id="tab-core" onclick="showTab('core')" style="font-size:11px;font-family:monospace;color:#a89fe0;background:rgba(99,88,255,0.15);border:1px solid rgba(99,88,255,0.25);padding:3px 12px;border-radius:6px 0 0 6px;cursor:pointer;">Core</span>
+          <span id="tab-sentry" onclick="showTab('sentry')" style="font-size:11px;font-family:monospace;color:#44414f;background:transparent;border:1px solid rgba(255,255,255,0.08);padding:3px 12px;border-radius:0 6px 6px 0;cursor:pointer;">Sentry</span>
+        </div>
       </div>
-      <div class="code-content">
+      <div id="code-core" class="code-content">
         <div><span class="ck">from</span> <span class="cv">vaultak</span> <span class="ck">import</span> <span class="cf">Vaultak</span>, <span class="cf">KillSwitchMode</span></div>
         <br>
         <div><span class="cc"># Configure once per agent</span></div>
@@ -681,10 +688,37 @@ footer {
         <div><span class="ck">with</span> <span class="cv">vt</span>.<span class="cf">monitor</span>(<span class="cs">"analyst-001"</span>):</div>
         <div>&nbsp;&nbsp;<span class="cf">execute_query</span>(...)</div>
         <br>
-        <div><span class="ca">→ Agent paused. Risk: 0.89</span></div>
+        <div><span class="ca">&#x2192; Agent paused. Risk: 0.89</span></div>
         <div><span class="ca">&nbsp;&nbsp;Awaiting approval.</span><span class="cursor-blink"></span></div>
       </div>
+      <div id="code-sentry" class="code-content" style="display:none;">
+        <div><span class="cc"># No code changes to your agent</span></div>
+        <div><span class="cc"># Install once, govern everything</span></div>
+        <br>
+        <div><span class="cc"># 1. Authenticate</span></div>
+        <div><span class="ca">$ vaultak-sentry auth --api-key vtk_...</span></div>
+        <br>
+        <div><span class="cc"># 2. Create a policy for your agent</span></div>
+        <div><span class="ca">$ vaultak-sentry policy create \</span></div>
+        <div><span class="ca">&nbsp;&nbsp;--agent-id my-agent \</span></div>
+        <div><span class="ca">&nbsp;&nbsp;--template data-pipeline</span></div>
+        <br>
+        <div><span class="cc"># 3. Run any agent. Zero code changes.</span></div>
+        <div><span class="ca">$ vaultak-sentry run python my_agent.py</span></div>
+        <br>
+        <div><span class="ca">&#x2192; Monitoring. Policy active. Dashboard live.</span><span class="cursor-blink"></span></div>
+      </div>
     </div>
+    <script>
+    function showTab(tab) {
+      document.getElementById('code-core').style.display = tab === 'core' ? 'block' : 'none';
+      document.getElementById('code-sentry').style.display = tab === 'sentry' ? 'block' : 'none';
+      document.getElementById('tab-core').style.color = tab === 'core' ? '#a89fe0' : '#44414f';
+      document.getElementById('tab-core').style.background = tab === 'core' ? 'rgba(99,88,255,0.15)' : 'transparent';
+      document.getElementById('tab-sentry').style.color = tab === 'sentry' ? '#4ade80' : '#44414f';
+      document.getElementById('tab-sentry').style.background = tab === 'sentry' ? 'rgba(20,200,180,0.1)' : 'transparent';
+    }
+    </script>
   </div>
 </div>
 
