@@ -705,10 +705,12 @@ def onboard_user(
         cur.execute("SELECT id FROM organizations WHERE slug = %s", (slug,))
         existing = cur.fetchone()
         if existing:
-            cur.execute("SELECT key_prefix FROM api_keys WHERE org_id = %s", (str(existing["id"]),))
+            cur.execute("SELECT key_value FROM api_keys WHERE org_id = %s", (str(existing["id"]),))
             key = cur.fetchone()
+            if key and key.get("key_value"):
+                return {"org_id": str(existing["id"]), "already_exists": False, "api_key": key["key_value"]}
             raw_key = f"vtk_{secrets.token_urlsafe(32)}"
-            cur.execute("UPDATE api_keys SET key_hash = %s, key_prefix = %s WHERE org_id = %s", (hash_key(raw_key), raw_key[:12], str(existing["id"])))
+            cur.execute("UPDATE api_keys SET key_hash = %s, key_prefix = %s, key_value = %s WHERE org_id = %s", (hash_key(raw_key), raw_key[:12], raw_key, str(existing["id"])))
             db.commit()
             return {"org_id": str(existing["id"]), "already_exists": False, "api_key": raw_key}
         cur.execute("INSERT INTO organizations (name, slug) VALUES (%s, %s) RETURNING id", (name, slug))
