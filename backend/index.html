@@ -834,116 +834,65 @@ footer {
 </section>
 
 <!-- CODE SECTION -->
-<div class="code-section">
-  <div class="code-inner">
-    <div class="code-left">
-      <div class="section-label">Integration</div>
-      <h2 class="section-heading" style="max-width:440px;">Two ways in.<br><em>Zero</em> compromise.</h2>
-      <p class="code-desc">Both connect to the same dashboard. Pick the one that fits your workflow.</p>
-      <div style="display:flex;flex-direction:column;gap:16px;margin-top:24px;">
+<section class="section" id="how" style="border-top:1px solid var(--border);">
+  <div class="section-label">Integration</div>
+  <h2 class="section-heading">Two ways in.<br><em>Zero</em> compromise.</h2>
+  <p class="section-sub" style="max-width:560px;margin:0 auto 48px;">Both connect to the same dashboard. Pick the one that fits your workflow.</p>
 
-        <!-- Sentry Card -->
-        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:20px 20px 16px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <div style="font-size:11px;font-family:monospace;color:#ffffff;letter-spacing:.1em;">VAULTAK SENTRY</div>
-            <div style="font-size:10px;color:#8a8695;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:2px 8px;">DESKTOP APP</div>
-          </div>
-          <div style="font-size:13px;color:#8a8695;line-height:1.6;margin-bottom:14px;">No code changes. Download and monitor any agent instantly. Works with any language or framework.</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-            <a href="https://github.com/samueloladji-beep/Vaultak/releases/latest/download/VaultakSentry-1.0.0-arm64.pkg"
-               style="display:block;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:7px;padding:10px;text-decoration:none;text-align:center;">
-              <div style="font-size:12px;font-weight:600;color:#ffffff;margin-bottom:3px;">macOS</div>
-              <div style="font-size:10px;color:#8a8695;">.pkg</div>
-            </a>
-            <a href="https://github.com/samueloladji-beep/Vaultak/releases/latest/download/VaultakSentry-1.0.0-windows.zip"
-               style="display:block;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:7px;padding:10px;text-decoration:none;text-align:center;position:relative;">
-              <div style="font-size:12px;font-weight:600;color:#ffffff;margin-bottom:3px;">Windows</div>
-              <div style="font-size:10px;color:#8a8695;">.zip</div>
-              <div style="position:absolute;top:4px;right:4px;font-size:8px;color:#f59e0b;">BETA</div>
-            </a>
-            <a href="https://github.com/samueloladji-beep/Vaultak/releases/latest/download/VaultakSentry-1.0.0-linux.tar.gz"
-               style="display:block;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:7px;padding:10px;text-decoration:none;text-align:center;position:relative;">
-              <div style="font-size:12px;font-weight:600;color:#ffffff;margin-bottom:3px;">Linux</div>
-              <div style="font-size:10px;color:#8a8695;">.tar.gz</div>
-              <div style="position:absolute;top:4px;right:4px;font-size:8px;color:#f59e0b;">BETA</div>
-            </a>
-          </div>
-        </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:960px;margin:0 auto;">
 
-        <!-- Core Card -->
-        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:20px 20px 16px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <div style="font-size:11px;font-family:monospace;color:#ffffff;letter-spacing:.1em;">VAULTAK CORE</div>
-            <div style="font-size:10px;color:#8a8695;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:2px 8px;">SDK</div>
-          </div>
-          <div style="font-size:13px;color:#8a8695;line-height:1.6;margin-bottom:14px;">Five lines of code. Deep integration with custom rollback callbacks and full programmatic control.</div>
-          <div style="font-family:monospace;font-size:12px;color:#a89fe0;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:7px;padding:10px 14px;">pip install vaultak</div>
-        </div>
-
-
+    <!-- Sentry Card -->
+    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:32px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:11px;font-family:monospace;color:#ffffff;letter-spacing:.12em;">VAULTAK SENTRY</div>
+        <div style="font-size:10px;color:#8a8695;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:2px 10px;">DESKTOP APP</div>
+      </div>
+      <div style="font-size:22px;font-weight:700;color:#ffffff;margin-bottom:10px;">No code changes.</div>
+      <div style="font-size:14px;color:#8a8695;line-height:1.7;margin-bottom:28px;">Download Sentry and monitor any AI agent instantly. Works with any language, any framework, any existing agent — no instrumentation required.</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+        <a href="https://github.com/samueloladji-beep/Vaultak/releases/latest/download/VaultakSentry-1.0.0-arm64.pkg"
+           style="display:block;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px 10px;text-decoration:none;text-align:center;transition:border-color .2s;"
+           onmouseover="this.style.borderColor='rgba(255,255,255,0.25)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'">
+          <div style="font-size:13px;font-weight:600;color:#ffffff;margin-bottom:4px;">macOS</div>
+          <div style="font-size:11px;color:#8a8695;">.pkg</div>
+        </a>
+        <a href="https://github.com/samueloladji-beep/Vaultak/releases/latest/download/VaultakSentry-1.0.0-windows.zip"
+           style="display:block;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px 10px;text-decoration:none;text-align:center;position:relative;transition:border-color .2s;"
+           onmouseover="this.style.borderColor='rgba(255,255,255,0.25)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'">
+          <div style="font-size:13px;font-weight:600;color:#ffffff;margin-bottom:4px;">Windows</div>
+          <div style="font-size:11px;color:#8a8695;">.zip</div>
+          <div style="position:absolute;top:5px;right:5px;font-size:8px;color:#f59e0b;">BETA</div>
+        </a>
+        <a href="https://github.com/samueloladji-beep/Vaultak/releases/latest/download/VaultakSentry-1.0.0-linux.tar.gz"
+           style="display:block;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px 10px;text-decoration:none;text-align:center;position:relative;transition:border-color .2s;"
+           onmouseover="this.style.borderColor='rgba(255,255,255,0.25)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)'">
+          <div style="font-size:13px;font-weight:600;color:#ffffff;margin-bottom:4px;">Linux</div>
+          <div style="font-size:11px;color:#8a8695;">.tar.gz</div>
+          <div style="position:absolute;top:5px;right:5px;font-size:8px;color:#f59e0b;">BETA</div>
+        </a>
       </div>
     </div>
-    <div class="code-window">
-      <div class="code-titlebar">
-        <div class="dot dot-r"></div>
-        <div class="dot dot-y"></div>
-        <div class="dot dot-g"></div>
-        <div style="display:flex;gap:0;margin-left:8px;">
-          <span style="font-size:12px;font-family:monospace;color:#ffffff;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);padding:4px 14px;border-radius:6px;font-weight:600;">Core SDK</span>
-        </div>
+
+    <!-- Core Card -->
+    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:32px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:11px;font-family:monospace;color:#ffffff;letter-spacing:.12em;">VAULTAK CORE</div>
+        <div style="font-size:10px;color:#8a8695;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:2px 10px;">SDK</div>
       </div>
-      <div id="code-core" class="code-content">
-        <div><span class="ck">from</span> <span class="cv">vaultak</span> <span class="ck">import</span> <span class="cf">Vaultak</span>, <span class="cf">KillSwitchMode</span></div>
-        <br>
-        <div><span class="cc"># Configure once per agent</span></div>
-        <div><span class="cv">vt</span> = <span class="cf">Vaultak</span>(</div>
-        <div>&nbsp;&nbsp;<span class="cv">api_key</span>=<span class="cs">"vtk_..."</span>,</div>
-        <div>&nbsp;&nbsp;<span class="cv">blocked_resources</span>=[<span class="cs">"prod.*"</span>],</div>
-        <div>&nbsp;&nbsp;<span class="cv">max_risk_score</span>=<span class="cs">0.7</span>,</div>
-        <div>&nbsp;&nbsp;<span class="cv">mode</span>=<span class="cf">KillSwitchMode</span>.<span class="cv">PAUSE</span>,</div>
-        <div>)</div>
-        <br>
-        <div><span class="cc"># Wrap your entire agent session</span></div>
-        <div><span class="ck">with</span> <span class="cv">vt</span>.<span class="cf">monitor</span>(<span class="cs">"analyst-001"</span>):</div>
-        <div>&nbsp;&nbsp;<span class="cf">execute_query</span>(...)</div>
-        <br>
-        <div><span class="ca">&#x2192; Agent paused. Risk: 0.89</span></div>
-        <div><span class="ca">&nbsp;&nbsp;Awaiting approval.</span><span class="cursor-blink"></span></div>
+      <div style="font-size:22px;font-weight:700;color:#ffffff;margin-bottom:10px;">Five lines of code.</div>
+      <div style="font-size:14px;color:#8a8695;line-height:1.7;margin-bottom:28px;">Deep SDK integration with custom rollback callbacks, policy enforcement, and full programmatic control over every agent action.</div>
+      <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px 22px;font-family:monospace;font-size:13px;line-height:2;">
+        <div><span style="color:#7c6fe0;">from</span> <span style="color:#e0e0e0;">vaultak</span> <span style="color:#7c6fe0;">import</span> <span style="color:#a89fe0;">Vaultak</span></div>
+        <div style="margin-top:8px;"><span style="color:#e0e0e0;">vt</span> = <span style="color:#a89fe0;">Vaultak</span>(<span style="color:#f0a070;">api_key</span>=<span style="color:#80c080;">"vtk_..."</span>)</div>
+        <div style="margin-top:8px;"><span style="color:#7c6fe0;">with</span> <span style="color:#e0e0e0;">vt</span>.<span style="color:#a89fe0;">monitor</span>(<span style="color:#80c080;">"my-agent"</span>):</div>
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#606060;"># your agent code here</span></div>
+        <div style="margin-top:8px;color:#80c080;">→ Monitoring. Dashboard live.</div>
       </div>
-      <div id="code-sentry" class="code-content" style="display:none;visibility:hidden;">
-        <div><span class="cc"># No code changes to your agent</span></div>
-        <div><span class="cc"># Install once, govern everything</span></div>
-        <br>
-        <div><span class="cc"># 1. Authenticate</span></div>
-        <div><span class="ca">$ vaultak-sentry auth --api-key vtk_...</span></div>
-        <br>
-        <div><span class="cc"># 2. Create a policy for your agent</span></div>
-        <div><span class="ca">$ vaultak-sentry policy create \</span></div>
-        <div><span class="ca">&nbsp;&nbsp;--agent-id my-agent \</span></div>
-        <div><span class="ca">&nbsp;&nbsp;--template data-pipeline</span></div>
-        <br>
-        <div><span class="cc"># 3. Run any agent. Zero code changes.</span></div>
-        <div><span class="ca">$ vaultak-sentry run python my_agent.py</span></div>
-        <br>
-        <div><span class="ca">&#x2192; Monitoring. Policy active. Dashboard live.</span><span class="cursor-blink"></span></div>
-      </div>
+      <div style="margin-top:16px;font-family:monospace;font-size:12px;color:#a89fe0;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:7px;padding:10px 14px;">pip install vaultak</div>
     </div>
-    <script>
-    function showTab(tab) {
-      document.getElementById('code-core').style.display = tab === 'core' ? 'block' : 'none';
-      document.getElementById('code-sentry').style.display = tab === 'sentry' ? 'block' : 'none';
-      document.getElementById('tab-core').style.color = tab === 'core' ? '#ffffff' : '#8a8695';
-      document.getElementById('tab-core').style.background = tab === 'core' ? 'rgba(255,255,255,0.15)' : 'transparent';
-      document.getElementById('tab-core').style.borderColor = tab === 'core' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.15)';
-      document.getElementById('tab-core').style.fontWeight = tab === 'core' ? '600' : 'normal';
-      document.getElementById('tab-sentry').style.color = tab === 'sentry' ? '#ffffff' : '#8a8695';
-      document.getElementById('tab-sentry').style.background = tab === 'sentry' ? 'rgba(255,255,255,0.15)' : 'transparent';
-      document.getElementById('tab-sentry').style.borderColor = tab === 'sentry' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.15)';
-      document.getElementById('tab-sentry').style.fontWeight = tab === 'sentry' ? '600' : 'normal';
-    }
-    </script>
+
   </div>
-</div>
+</section>
 
 <!-- MODES -->
 <section class="section" id="modes">
