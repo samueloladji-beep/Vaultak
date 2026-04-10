@@ -669,8 +669,8 @@ footer {
         <div class="dot dot-y"></div>
         <div class="dot dot-g"></div>
         <div style="display:flex;gap:0;margin-left:8px;">
-          <span id="tab-core" onclick="showTab('core')" style="font-size:11px;font-family:monospace;color:#a89fe0;background:rgba(99,88,255,0.15);border:1px solid rgba(99,88,255,0.25);padding:3px 12px;border-radius:6px 0 0 6px;cursor:pointer;">Core</span>
-          <span id="tab-sentry" onclick="showTab('sentry')" style="font-size:11px;font-family:monospace;color:#44414f;background:transparent;border:1px solid rgba(255,255,255,0.08);padding:3px 12px;border-radius:0 6px 6px 0;cursor:pointer;">Sentry</span>
+          <span id="tab-core" onclick="showTab('core')" style="font-size:12px;font-family:monospace;color:#ffffff;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);padding:4px 14px;border-radius:6px 0 0 6px;cursor:pointer;font-weight:600;">Core</span>
+          <span id="tab-sentry" onclick="showTab('sentry')" style="font-size:12px;font-family:monospace;color:#8a8695;background:transparent;border:1px solid rgba(255,255,255,0.15);padding:4px 14px;border-radius:0 6px 6px 0;cursor:pointer;">Sentry</span>
         </div>
       </div>
       <div id="code-core" class="code-content">
@@ -713,10 +713,14 @@ footer {
     function showTab(tab) {
       document.getElementById('code-core').style.display = tab === 'core' ? 'block' : 'none';
       document.getElementById('code-sentry').style.display = tab === 'sentry' ? 'block' : 'none';
-      document.getElementById('tab-core').style.color = tab === 'core' ? '#a89fe0' : '#44414f';
-      document.getElementById('tab-core').style.background = tab === 'core' ? 'rgba(99,88,255,0.15)' : 'transparent';
-      document.getElementById('tab-sentry').style.color = tab === 'sentry' ? '#4ade80' : '#44414f';
-      document.getElementById('tab-sentry').style.background = tab === 'sentry' ? 'rgba(20,200,180,0.1)' : 'transparent';
+      document.getElementById('tab-core').style.color = tab === 'core' ? '#ffffff' : '#8a8695';
+      document.getElementById('tab-core').style.background = tab === 'core' ? 'rgba(255,255,255,0.15)' : 'transparent';
+      document.getElementById('tab-core').style.borderColor = tab === 'core' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.15)';
+      document.getElementById('tab-core').style.fontWeight = tab === 'core' ? '600' : 'normal';
+      document.getElementById('tab-sentry').style.color = tab === 'sentry' ? '#ffffff' : '#8a8695';
+      document.getElementById('tab-sentry').style.background = tab === 'sentry' ? 'rgba(255,255,255,0.15)' : 'transparent';
+      document.getElementById('tab-sentry').style.borderColor = tab === 'sentry' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.15)';
+      document.getElementById('tab-sentry').style.fontWeight = tab === 'sentry' ? '600' : 'normal';
     }
     </script>
   </div>
