@@ -14,6 +14,18 @@ try:
 except ImportError:
     HAS_SIEM = False
     _siem_router = None
+
+try:
+    from vaultak_redteam import RedTeamEngine
+    HAS_REDTEAM = True
+except ImportError:
+    HAS_REDTEAM = False
+
+try:
+    from vaultak_shadow_ai import ShadowAIDetector
+    HAS_SHADOW_AI = True
+except ImportError:
+    HAS_SHADOW_AI = False
 from typing import Any, Dict, Optional, List
 from datetime import datetime, timezone
 import psycopg
@@ -1458,6 +1470,47 @@ def sitemap():
   <url><loc>https://vaultak.com/terms</loc><priority>0.6</priority></url>
 </urlset>"""
     return Response(content=xml, media_type="application/xml")
+
+
+# Red Team
+class RedTeamRequest(BaseModel):
+    agent_description: str
+    capabilities: Optional[List[str]] = []
+
+@app.post("/api/redteam/scan")
+def redteam_scan(body: RedTeamRequest, org_id: str = Depends(get_org)):
+    if not HAS_REDTEAM:
+        raise HTTPException(status_code=503, detail="Red team module unavailable")
+    try:
+        engine = RedTeamEngine()
+        report = engine.scan(agent_description=body.agent_description, capabilities=body.capabilities)
+        return {"total_attacks": report.total_attacks, "vulnerabilities_found": report.vulnerabilities_found, "risk_score": report.risk_score, "findings": [{"category": str(f.category), "severity": f.severity, "description": f.description, "recommendation": f.recommendation} for f in report.findings], "summary": report.summary}
+    except Exception as e:
+        logger.error(f"Red team scan error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Shadow AI
+class ShadowAIScanRequest(BaseModel):
+    text: str
+    context: Optional[str] = None
+
+@app.get("/api/shadow-ai/status")
+def shadow_ai_status(org_id: str = Depends(get_org)):
+    if not HAS_SHADOW_AI:
+        raise HTTPException(status_code=503, detail="Shadow AI module unavailable")
+    return {"available": HAS_SHADOW_AI}
+
+@app.post("/api/shadow-ai/scan")
+def shadow_ai_scan(body: ShadowAIScanRequest, org_id: str = Depends(get_org)):
+    if not HAS_SHADOW_AI:
+        raise HTTPException(status_code=503, detail="Shadow AI module unavailable")
+    try:
+        detector = ShadowAIDetector()
+        result = detector.scan_text(body.text)
+        return {"detected": result.detected, "services": getattr(result, "services", []), "risk_level": getattr(result, "risk_level", "unknown")}
+    except Exception as e:
+        logger.error(f"Shadow AI scan error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/sitemap.xml")
 def sitemap():
