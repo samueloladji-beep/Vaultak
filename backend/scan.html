@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agent Risk Scanner — Vaultak</title>
+<meta name="description" content="Free tool: score your AI agent's security risk in seconds. Get a 0-100 risk score across 5 dimensions with actionable recommendations.">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Instrument+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #171717;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.12);
+    --text: #ffffff;
+    --muted: rgba(255,255,255,0.4);
+    --muted2: rgba(255,255,255,0.6);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Instrument Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 660px;
+    margin: 0 auto;
+    padding: 48px 24px 100px;
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 72px;
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .logo-mark {
+    width: 26px;
+    height: 26px;
+    background: #000;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .logo-mark::before {
+    content: '';
+    position: absolute;
+    width: 11px;
+    height: 11px;
+    background: white;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+
+  .logo-mark::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 3px solid transparent;
+    border-right: 3px solid transparent;
+    border-bottom: 4px solid black;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -68%);
+  }
+
+  .logo-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--text);
+  }
+
+  .nav-link {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.06em;
+    transition: color 0.2s;
+  }
+  .nav-link:hover { color: var(--text); }
+
+  .hero { margin-bottom: 48px; }
+
+  .hero-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 38px);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 14px;
+  }
+
+  .hero-sub {
+    font-size: 14px;
+    color: var(--muted2);
+    line-height: 1.7;
+    max-width: 480px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .card-inner { padding: 28px; }
+
+  .field { margin-bottom: 24px; }
+
+  label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  textarea, input[type="text"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 12px 14px;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    resize: none;
+    transition: border-color 0.2s;
+    line-height: 1.6;
+  }
+
+  textarea:focus, input[type="text"]:focus {
+    border-color: rgba(255,255,255,0.25);
+  }
+
+  textarea::placeholder, input::placeholder { color: var(--muted); }
+
+  .cap-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .cap-tag {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 5px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted2);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    letter-spacing: 0.03em;
+  }
+
+  .cap-tag:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+
+  .cap-tag.selected {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.25);
+    color: var(--text);
+  }
+
+  .cap-input-row { display: flex; gap: 8px; }
+  .cap-input-row input { flex: 1; }
+
+  .add-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 0 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted2);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    letter-spacing: 0.06em;
+  }
+
+  .add-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+
+  .scan-btn {
+    width: 100%;
+    background: var(--text);
+    color: #000;
+    border: none;
+    border-radius: 5px;
+    padding: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .scan-btn:hover { opacity: 0.85; }
+  .scan-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .loading {
+    display: none;
+    padding: 40px 28px;
+    text-align: center;
+  }
+
+  .loading.visible { display: block; }
+
+  .scan-bar {
+    width: 180px;
+    height: 1px;
+    background: var(--border);
+    margin: 0 auto 20px;
+    overflow: hidden;
+  }
+
+  .scan-bar-inner {
+    height: 100%;
+    background: rgba(255,255,255,0.5);
+    animation: scanLine 1.4s ease-in-out infinite;
+  }
+
+  @keyframes scanLine {
+    0%   { width: 0; margin-left: 0; }
+    50%  { width: 100%; margin-left: 0; }
+    100% { width: 0; margin-left: 100%; }
+  }
+
+  .loading-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+  }
+
+  .loading-steps {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .loading-step {
+    margin-bottom: 6px;
+    opacity: 0;
+    animation: stepFade 0.3s forwards;
+  }
+
+  .loading-step:nth-child(1) { animation-delay: 0.4s; }
+  .loading-step:nth-child(2) { animation-delay: 0.9s; }
+  .loading-step:nth-child(3) { animation-delay: 1.4s; }
+  .loading-step:nth-child(4) { animation-delay: 1.9s; }
+
+  @keyframes stepFade { to { opacity: 1; } }
+
+  #results { display: none; }
+  #results.visible { display: block; }
+
+  .score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .score-main {
+    padding: 40px 28px 28px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .score-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .score-number {
+    font-size: 80px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--text);
+    letter-spacing: -0.04em;
+    margin-bottom: 4px;
+  }
+
+  .score-denom {
+    font-size: 20px;
+    font-weight: 300;
+    color: var(--muted);
+  }
+
+  .tier-badge {
+    display: inline-block;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 3px;
+    padding: 4px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text);
+    margin-top: 12px;
+  }
+
+  .tier-desc {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+
+  .share-row {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .share-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  .share-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 3px;
+    padding: 7px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted2);
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .share-btn:hover { border-color: rgba(255,255,255,0.3); color: var(--text); }
+
+  .dims-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-bottom: 12px;
+  }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  .dim-row { margin-bottom: 18px; }
+  .dim-row:last-child { margin-bottom: 0; }
+
+  .dim-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .dim-name { font-size: 12px; color: var(--text); font-weight: 500; }
+
+  .dim-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .dim-bar-wrap {
+    height: 2px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  .dim-bar-fill {
+    height: 100%;
+    background: rgba(255,255,255,0.5);
+    border-radius: 1px;
+    transition: width 1.2s ease;
+  }
+
+  .recs-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-bottom: 12px;
+  }
+
+  .rec-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 13px;
+    color: var(--muted2);
+    line-height: 1.6;
+  }
+
+  .rec-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .rec-item:first-child { padding-top: 0; }
+
+  .rec-arrow {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    flex-shrink: 0;
+    font-size: 10px;
+    margin-top: 3px;
+  }
+
+  .cta-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 32px 28px;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  .cta-card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+
+  .cta-card p {
+    font-size: 13px;
+    color: var(--muted2);
+    line-height: 1.7;
+    margin-bottom: 24px;
+    max-width: 380px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .btn-primary {
+    display: inline-block;
+    background: var(--text);
+    color: #000;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 12px 22px;
+    border-radius: 4px;
+    text-decoration: none;
+    margin: 4px;
+    transition: opacity 0.2s;
+  }
+
+  .btn-primary:hover { opacity: 0.85; }
+
+  .btn-outline {
+    display: inline-block;
+    background: transparent;
+    color: var(--muted2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    padding: 12px 22px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    text-decoration: none;
+    margin: 4px;
+    transition: all 0.2s;
+  }
+
+  .btn-outline:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+
+  .rescan-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: all 0.2s;
+    margin-top: 4px;
+  }
+
+  .rescan-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+
+  .divider { height: 1px; background: var(--border); margin: 48px 0; }
+
+  footer {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    line-height: 2;
+  }
+
+  footer a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  footer a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav>
+    <a href="https://vaultak.com" class="nav-logo">
+      <div class="logo-mark"></div>
+      <span class="logo-text">VAULTAK</span>
+    </a>
+    <a href="https://app.vaultak.com" class="nav-link">Get full access →</a>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-eyebrow">// Free tool</div>
+    <h1>AI Agent<br>Risk Scanner</h1>
+    <p class="hero-sub">Describe your agent and get a security score across 5 risk dimensions — with actionable recommendations in seconds.</p>
+  </div>
+
+  <div class="card" id="scannerCard">
+    <div class="card-inner">
+
+      <div class="field">
+        <label>What does your agent do?</label>
+        <textarea id="agentDesc" rows="4" placeholder="e.g. A customer service agent that searches our knowledge base, looks up order history, updates user accounts, and escalates tickets to human agents when needed..."></textarea>
+      </div>
+
+      <div class="field">
+        <label>Capabilities — select all that apply</label>
+        <div class="cap-grid" id="capTags">
+          <div class="cap-tag" onclick="togglePreset(this,'read database')">read database</div>
+          <div class="cap-tag" onclick="togglePreset(this,'write database')">write database</div>
+          <div class="cap-tag" onclick="togglePreset(this,'delete records')">delete records</div>
+          <div class="cap-tag" onclick="togglePreset(this,'send emails')">send emails</div>
+          <div class="cap-tag" onclick="togglePreset(this,'call external APIs')">call external APIs</div>
+          <div class="cap-tag" onclick="togglePreset(this,'read files')">read files</div>
+          <div class="cap-tag" onclick="togglePreset(this,'write files')">write files</div>
+          <div class="cap-tag" onclick="togglePreset(this,'execute code')">execute code</div>
+          <div class="cap-tag" onclick="togglePreset(this,'access credentials')">access credentials</div>
+          <div class="cap-tag" onclick="togglePreset(this,'make payments')">make payments</div>
+          <div class="cap-tag" onclick="togglePreset(this,'deploy to production')">deploy to production</div>
+          <div class="cap-tag" onclick="togglePreset(this,'browse the web')">browse the web</div>
+        </div>
+        <div class="cap-input-row">
+          <input type="text" id="capInput" placeholder="Add custom capability...">
+          <button class="add-btn" onclick="addCap()">+ Add</button>
+        </div>
+      </div>
+
+      <button class="scan-btn" id="scanBtn" onclick="runScan()">Scan Agent →</button>
+    </div>
+
+    <div class="loading" id="loadingState">
+      <div class="scan-bar"><div class="scan-bar-inner"></div></div>
+      <div class="loading-label">Analyzing agent profile...</div>
+      <div class="loading-steps">
+        <div class="loading-step">→ Evaluating action type risk</div>
+        <div class="loading-step">→ Scoring resource sensitivity</div>
+        <div class="loading-step">→ Calculating blast radius</div>
+        <div class="loading-step">→ Generating recommendations</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="results">
+
+    <div class="score-card">
+      <div class="score-main">
+        <div class="score-eyebrow">Vaultak Risk Score</div>
+        <div class="score-number" id="scoreNum">--<span class="score-denom">/100</span></div>
+        <div><span class="tier-badge" id="tierBadge">--</span></div>
+        <div class="tier-desc" id="tierDesc"></div>
+      </div>
+      <div class="share-row">
+        <span class="share-label">Share your agent's security score</span>
+        <button class="share-btn" onclick="shareOnTwitter()">Share on X →</button>
+      </div>
+    </div>
+
+    <div class="dims-card">
+      <div class="section-label">Risk Breakdown — 5 Dimensions</div>
+      <div id="dimensionRows"></div>
+    </div>
+
+    <div class="recs-card">
+      <div class="section-label">Recommendations</div>
+      <div id="recsList"></div>
+    </div>
+
+    <div class="cta-card">
+      <h3>Enforce these policies automatically</h3>
+      <p>Vaultak monitors your agent in real time, blocks risky actions before they execute, and gives you a full audit trail. Five minutes to integrate.</p>
+      <a href="https://app.vaultak.com" class="btn-primary">Protect my agent</a>
+      <a href="https://docs.vaultak.com" class="btn-outline">Read the docs</a>
+    </div>
+
+    <button class="rescan-btn" onclick="resetScanner()">← Scan a different agent</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <footer>
+    <a href="https://vaultak.com">vaultak.com</a> &nbsp;·&nbsp;
+    <a href="https://docs.vaultak.com">docs</a> &nbsp;·&nbsp;
+    <a href="https://app.vaultak.com">dashboard</a>
+    <br>
+    The operating system for safe AI agents.
+  </footer>
+
+</div>
+<script>
+  const selectedCaps = new Set();
+
+  function togglePreset(el, cap) {
+    if (selectedCaps.has(cap)) {
+      selectedCaps.delete(cap);
+      el.classList.remove('selected');
+    } else {
+      selectedCaps.add(cap);
+      el.classList.add('selected');
+    }
+  }
+
+  function addCap() {
+    const input = document.getElementById('capInput');
+    const val = input.value.trim();
+    if (!val) return;
+    selectedCaps.add(val);
+    const tag = document.createElement('div');
+    tag.className = 'cap-tag selected';
+    tag.textContent = val;
+    tag.onclick = () => { selectedCaps.delete(val); tag.remove(); };
+    document.getElementById('capTags').appendChild(tag);
+    input.value = '';
+  }
+
+  document.getElementById('capInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addCap();
+  });
+
+  function scoreAgent(description, capabilities) {
+    const text = (description + ' ' + [...capabilities].join(' ')).toLowerCase();
+    const count = (keywords) => keywords.filter(w => text.includes(w)).length;
+
+    const actionScore = Math.min(100,
+      count(['delete','drop','truncate','destroy','remove']) * 25 +
+      count(['write','insert','update','modify','execute','run','deploy']) * 15 +
+      count(['send','post','publish','email','message']) * 10
+    );
+    const resourceScore = Math.min(100,
+      count(['production','prod_','prod ']) * 25 +
+      count(['password','secret','credential','api key','token','private key']) * 30 +
+      count(['pii','personal data','user data','payment','credit card']) * 25 +
+      count(['s3','bucket','filesystem','file system','storage']) * 15
+    );
+    const blastScore = Math.min(100,
+      count(['all users','all records','entire','bulk','batch','global','system-wide']) * 30 +
+      count(['mass','without limit','every record','for each']) * 35 +
+      count(['loop','iterate']) * 20
+    );
+    const deviationScore = Math.min(100,
+      count(['unrestricted','unlimited','no limit','no restriction']) * 35 +
+      count(['bypass','override','skip validation','ignore policy']) * 40 +
+      count(['autonomous','self-modifying','recursive']) * 25
+    );
+    const timeScore = Math.min(100,
+      count(['scheduled','cron','background','always on','24/7','continuous','daemon']) * 20 + 10
+    );
+
+    const composite = Math.min(100, Math.round(
+      actionScore * 0.25 + resourceScore * 0.25 +
+      blastScore * 0.20 + deviationScore * 0.15 + timeScore * 0.15
+    ));
+
+    return {
+      composite,
+      dimensions: {
+        'Action Type':          { score: actionScore,    weight: '25%' },
+        'Resource Sensitivity': { score: resourceScore,  weight: '25%' },
+        'Blast Radius':         { score: blastScore,     weight: '20%' },
+        'Behavioral Deviation': { score: deviationScore, weight: '15%' },
+        'Time Pattern':         { score: timeScore,      weight: '15%' },
+      }
+    };
+  }
+
+  function getTier(score) {
+    if (score < 30) return { tier: 'LOW',      desc: 'Agent operates within acceptable risk boundaries.' };
+    if (score < 60) return { tier: 'MODERATE', desc: 'Risk factors present. Policy review recommended.' };
+    if (score < 80) return { tier: 'HIGH',     desc: 'Significant risk detected. Policy enforcement advised.' };
+    return             { tier: 'CRITICAL', desc: 'Severe risk exposure. Immediate enforcement required.' };
+  }
+
+  function getRecommendations(result, score) {
+    const recs = [];
+    const d = result.dimensions;
+    if (d['Action Type'].score >= 25)          recs.push('Restrict destructive actions (delete, execute, deploy) using Vaultak action-type policies.');
+    if (d['Resource Sensitivity'].score >= 20) recs.push('Block direct agent access to secrets, credentials, and production databases via resource sensitivity rules.');
+    if (d['Blast Radius'].score >= 20)         recs.push('Cap bulk operations to prevent large-scale unintended mutations. Set blast-radius limits in your policy.');
+    if (d['Behavioral Deviation'].score >= 20) recs.push('Enable behavioral deviation monitoring. Flag and auto-pause autonomous override operations.');
+    if (d['Time Pattern'].score >= 25)         recs.push('Configure time-window policies to restrict agent execution outside business hours.');
+    if (score >= 60)  recs.push('Enable Vaultak auto-pause. Automatically halt the agent when risk score exceeds your defined threshold.');
+    if (score >= 80)  recs.push('Enable the Vaultak rollback engine. Snapshot state before each high-risk action for instant recovery.');
+    if (recs.length === 0) recs.push('Risk profile is within acceptable range. Add Vaultak monitoring for real-time visibility and audit logs.');
+    recs.push('Install Vaultak in 5 minutes — pip install vaultak — full documentation at docs.vaultak.com');
+    return recs;
+  }
+
+  function runScan() {
+    const desc = document.getElementById('agentDesc').value.trim();
+    if (!desc) { document.getElementById('agentDesc').focus(); return; }
+
+    document.getElementById('scanBtn').disabled = true;
+    document.getElementById('loadingState').classList.add('visible');
+
+    setTimeout(() => {
+      const result = scoreAgent(desc, selectedCaps);
+      const { tier, desc: tierDesc } = getTier(result.composite);
+      const recs = getRecommendations(result, result.composite);
+
+      document.getElementById('scoreNum').innerHTML =
+        `${result.composite}<span class="score-denom">/100</span>`;
+      document.getElementById('tierBadge').textContent = tier;
+      document.getElementById('tierDesc').textContent = tierDesc;
+
+      const dimsEl = document.getElementById('dimensionRows');
+      dimsEl.innerHTML = '';
+      Object.entries(result.dimensions).forEach(([name, { score, weight }]) => {
+        dimsEl.innerHTML += `
+          <div class="dim-row">
+            <div class="dim-top">
+              <span class="dim-name">${name}</span>
+              <span class="dim-meta">${score}/100 &nbsp;·&nbsp; ${weight}</span>
+            </div>
+            <div class="dim-bar-wrap">
+              <div class="dim-bar-fill" style="width:${score}%"></div>
+            </div>
+          </div>`;
+      });
+
+      document.getElementById('recsList').innerHTML = recs.map(r => `
+        <div class="rec-item">
+          <span class="rec-arrow">→</span>
+          <span>${r}</span>
+        </div>`).join('');
+
+      document.getElementById('loadingState').classList.remove('visible');
+      document.getElementById('scannerCard').style.display = 'none';
+      document.getElementById('results').classList.add('visible');
+
+      window._lastScore = result.composite;
+      window._lastTier  = tier;
+    }, 2600);
+  }
+
+  function resetScanner() {
+    document.getElementById('results').classList.remove('visible');
+    document.getElementById('scannerCard').style.display = 'block';
+    document.getElementById('scanBtn').disabled = false;
+    document.getElementById('agentDesc').value = '';
+  }
+
+  function shareOnTwitter() {
+    const score = window._lastScore ?? '??';
+    const tier  = window._lastTier  ?? '';
+    const text  = `Just scanned my AI agent with @VaultakHQ — scored ${score}/100 (${tier} risk).\n\nFree scan: vaultak.com/scan`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+  }
+</script>
+</body>
+</html>
