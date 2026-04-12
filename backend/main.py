@@ -1331,7 +1331,7 @@ def pricing_page():
           <li><span class="check">&#10003;</span> Security policies</li>
           <li><span class="check">&#10003;</span> Email support</li>
         </ul>
-        <a href="https://app.vaultak.com" class="plan-btn plan-btn-outline">Start free trial</a>
+        <a href="https://app.vaultak.com" class="plan-btn plan-btn-outline">Get started</a>
       </div>
 
       <div class="plan featured">
@@ -1349,7 +1349,7 @@ def pricing_page():
           <li><span class="check">&#10003;</span> Up to 10 seats</li>
           <li><span class="check">&#10003;</span> Priority support</li>
         </ul>
-        <a href="https://app.vaultak.com" class="plan-btn plan-btn-light">Start free trial</a>
+        <a href="https://app.vaultak.com" class="plan-btn plan-btn-light">Get started</a>
       </div>
 
       <div class="plan">
@@ -1366,7 +1366,7 @@ def pricing_page():
           <li><span class="check">&#10003;</span> Slack alerts</li>
           <li><span class="check">&#10003;</span> SLA guarantee</li>
         </ul>
-        <a href="https://app.vaultak.com" class="plan-btn plan-btn-outline">Start free trial</a>
+        <a href="https://app.vaultak.com" class="plan-btn plan-btn-outline">Get started</a>
       </div>
 
       <div class="plan">
