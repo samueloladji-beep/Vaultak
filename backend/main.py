@@ -742,6 +742,15 @@ def serve_landing():
             html = f.read()
         html = html.replace("Vaultak · v0.5.1", f"Vaultak · v{version}")
         return HTMLResponse(content=html)
+
+@app.get("/scan", response_class=HTMLResponse)
+def serve_scan():
+    scan_path = os.path.join(os.path.dirname(__file__), "scan.html")
+    if os.path.exists(scan_path):
+        with open(scan_path, "r") as f:
+            html = f.read()
+        return HTMLResponse(content=html)
+    return HTMLResponse(content="Not found", status_code=404)
     return {"status": "ok", "service": "Vaultak API", "version": version}
 
 @app.post("/api/onboard")
