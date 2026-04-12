@@ -1,0 +1,45 @@
+# smithery.yaml — Vaultak MCP Server registry manifest
+# Publish at: smithery.ai/new
+
+name: vaultak
+displayName: Vaultak — AI Agent Security
+description: >
+  Score your AI agent's risk level, check if actions should be allowed or blocked,
+  and get ready-to-use security policies — all without leaving your AI assistant.
+  Powered by Vaultak's 5-dimension runtime security engine.
+
+version: "1.0.0"
+author: Vaultak
+homepage: https://vaultak.com
+repository: https://github.com/samueloladji-beep/Vaultak
+
+categories:
+  - security
+  - developer-tools
+  - ai-agents
+
+tags:
+  - ai-agent-security
+  - runtime-security
+  - policy-enforcement
+  - risk-scoring
+  - llm-security
+  - agentic-ai
+
+tools:
+  - name: vaultak_risk_score
+    description: Score any AI agent 0-100 across 5 security dimensions with actionable recommendations
+  - name: vaultak_policy_check
+    description: Check if an agent action should be ALLOWED or BLOCKED based on your security policies
+  - name: vaultak_get_policy_templates
+    description: Get ready-to-use security policy templates for databases, file systems, APIs, and PII
+
+startCommand:
+  type: stdio
+  command: uvx
+  args: ["vaultak-mcp"]
+
+config:
+  - key: VAULTAK_API_KEY
+    description: Your Vaultak API key from app.vaultak.com (optional — enables live policy sync)
+    required: false
