@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="vaultak",
-    version="0.6.0",
+    version="0.6.1",
     author="Samuel Oladji",
     author_email="samueloladji@gmail.com",
     description="Real-time behavioral kill switch for AI agents",

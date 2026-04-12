@@ -58,6 +58,15 @@ class VaultakMonitor:
     def _register_file_snapshot(self, path: str, content: bytes):
         self._file_snapshot._snapshots[path] = content
 
+    def _register_db_snapshot(self, dsn: str, sql: str, conn):
+        """Store db connection for rollback via transaction."""
+        if not hasattr(self, "_db_connections"):
+            self._db_connections = {}
+        key = id(conn)
+        if key not in self._db_connections:
+            self._db_connections[key] = {"conn": conn, "dsn": dsn, "sqls": []}
+        self._db_connections[key]["sqls"].append(sql)
+
     def _intercept(self, action_type: str, resource: str, payload: dict) -> str:
         """
         Called by interceptors for every action.
@@ -142,13 +151,25 @@ class VaultakMonitor:
         return min(score, 100)
 
     def _execute_rollback(self):
-        """Restore all snapshotted files."""
+        """Restore all snapshotted files and rollback database transactions."""
+        # File rollback
         results = self._file_snapshot.restore_all()
         for path, success in results:
             if success:
-                logger.info(f"Rolled back: {path}")
+                logger.info(f"Rolled back file: {path}")
             else:
-                logger.error(f"Rollback failed: {path}")
+                logger.error(f"File rollback failed: {path}")
+
+        # Database rollback
+        if hasattr(self, "_db_connections"):
+            for key, info in self._db_connections.items():
+                try:
+                    conn = info["conn"]
+                    conn.rollback()
+                    logger.info(f"Rolled back database transaction: {info['dsn']}")
+                except Exception as e:
+                    logger.error(f"Database rollback failed: {e}")
+            self._db_connections.clear()
 
     def _send_action(self, action_type: str, resource: str, payload: dict, score: int, decision: str):
         """Send action to backend asynchronously."""

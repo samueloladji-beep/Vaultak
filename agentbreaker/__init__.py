@@ -1,7 +1,7 @@
 from .exceptions import AgentPausedError, AgentTerminatedError, BehaviorViolationError
 from .models import ActionType, KillSwitchMode, AlertLevel
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 
 import os as _os
 

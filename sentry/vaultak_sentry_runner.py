@@ -69,7 +69,7 @@ def send_event(api_key, agent_id, session_id, action_type, resource, score, deci
 
 
 def monitor_process(proc, agent_id, session_id, api_key, pause_threshold, rollback_threshold, alert_threshold, blocked_resources):
-    """Monitor a running process using psutil."""
+    """Monitor a running process using psutil + watchdog filesystem events."""
     if not HAS_PSUTIL:
         logger.warning("psutil not installed. Install with: pip install psutil")
         logger.warning("Running without process monitoring.")
@@ -81,62 +81,133 @@ def monitor_process(proc, agent_id, session_id, api_key, pause_threshold, rollba
         return
 
     seen_connections = set()
-    seen_files = set()
+    file_snapshots = {}
+    import fnmatch
 
+    # ── Watchdog filesystem monitoring ───────────────────────────────────
+    watchdog_observer = None
+    try:
+        from watchdog.observers import Observer
+        from watchdog.events import FileSystemEventHandler
+
+        class AgentFileHandler(FileSystemEventHandler):
+            def on_modified(self, event):
+                if event.is_directory:
+                    return
+                fpath = event.src_path
+                blocked = any(fnmatch.fnmatch(fpath, p) or p.strip("*") in fpath
+                              for p in blocked_resources)
+                score = 75 if blocked else 40
+                decision = "BLOCK" if blocked else ("ALERT" if score >= alert_threshold else "ALLOW")
+                send_event(api_key, agent_id, session_id, "file_write", fpath, score, decision)
+                logger.info(f"[SENTRY] File modified: {fpath} | {decision}")
+                if blocked:
+                    logger.warning(f"[SENTRY] BLOCKED - terminating agent")
+                    proc.terminate()
+
+            def on_created(self, event):
+                if event.is_directory:
+                    return
+                fpath = event.src_path
+                # Save snapshot for rollback
+                try:
+                    with open(fpath, "rb") as f:
+                        file_snapshots[fpath] = None  # new file - rollback = delete
+                except Exception:
+                    pass
+                blocked = any(fnmatch.fnmatch(fpath, p) or p.strip("*") in fpath
+                              for p in blocked_resources)
+                score = 60 if blocked else 30
+                decision = "BLOCK" if blocked else ("ALERT" if score >= alert_threshold else "ALLOW")
+                send_event(api_key, agent_id, session_id, "file_write", fpath, score, decision)
+                logger.info(f"[SENTRY] File created: {fpath} | {decision}")
+
+            def on_deleted(self, event):
+                if event.is_directory:
+                    return
+                fpath = event.src_path
+                score = 80
+                decision = "ALERT" if score >= alert_threshold else "ALLOW"
+                send_event(api_key, agent_id, session_id, "delete", fpath, score, decision)
+                logger.warning(f"[SENTRY] File deleted: {fpath} | {decision}")
+
+        handler = AgentFileHandler()
+        watchdog_observer = Observer()
+        # Watch /tmp and current working directory only (not entire home)
+        import os as _os
+        watch_dirs = ["/tmp", _os.getcwd()]
+        # Add any directories from blocked resources
+        for pattern in blocked_resources:
+            parent = _os.path.dirname(pattern.strip("*"))
+            if parent and _os.path.exists(parent):
+                watch_dirs.append(parent)
+        seen_dirs = set()
+        for watch_dir in watch_dirs:
+            if watch_dir and _os.path.exists(watch_dir) and watch_dir not in seen_dirs:
+                watchdog_observer.schedule(handler, watch_dir, recursive=True)
+                seen_dirs.add(watch_dir)
+                logger.info(f"[SENTRY] Watching: {watch_dir}")
+        watchdog_observer.start()
+        logger.info("[SENTRY] Filesystem watcher active")
+    except ImportError:
+        logger.warning("[SENTRY] watchdog not installed - filesystem events limited")
+        logger.warning("Install with: pip install watchdog")
+
+    # ── Network + process monitoring loop ────────────────────────────────
     while proc.poll() is None:
         try:
-            # Monitor network connections
+            # Monitor network connections - real time
             try:
                 for conn in ps_proc.net_connections(kind="inet"):
                     if conn.status == "ESTABLISHED" and conn.raddr:
                         remote = f"{conn.raddr.ip}:{conn.raddr.port}"
                         if remote not in seen_connections:
                             seen_connections.add(remote)
-                            score = 35
+                            # Score based on destination
+                            sensitive = any(kw in remote for kw in ["openai", "anthropic", "api"])
+                            score = 45 if sensitive else 30
                             decision = "ALERT" if score >= alert_threshold else "ALLOW"
                             send_event(api_key, agent_id, session_id, "api_call", remote, score, decision)
-                            logger.info(f"[MONITOR] Network: {remote} | Score: {score} | {decision}")
-            except (psutil.AccessDenied, AttributeError):
-                pass
-
-            # Monitor open files
-            try:
-                for f in ps_proc.open_files():
-                    fpath = f.path
-                    if fpath not in seen_files and not fpath.startswith("/proc"):
-                        seen_files.add(fpath)
-                        # Check blocked resources
-                        import fnmatch
-                        blocked = any(fnmatch.fnmatch(fpath, p) or p in fpath for p in blocked_resources)
-                        score = 70 if blocked else 20
-                        decision = "BLOCK" if blocked else ("ALERT" if score >= alert_threshold else "ALLOW")
-                        send_event(api_key, agent_id, session_id, "file_read", fpath, score, decision)
-                        if blocked:
-                            logger.warning(f"[MONITOR] BLOCKED file access: {fpath}")
-                            proc.terminate()
-                            return
+                            logger.info(f"[SENTRY] Network: {remote} | Score: {score} | {decision}")
             except (psutil.AccessDenied, AttributeError):
                 pass
 
             # Monitor CPU/memory
             try:
-                cpu = ps_proc.cpu_percent(interval=0.1)
-                mem = ps_proc.memory_info().rss / 1024 / 1024  # MB
+                cpu = ps_proc.cpu_percent(interval=None)
+                mem = ps_proc.memory_info().rss / 1024 / 1024
                 if cpu > 90:
-                    score = 70
-                    send_event(api_key, agent_id, session_id, "resource_spike", f"cpu:{cpu:.0f}%", score, "ALERT")
-                    logger.warning(f"[MONITOR] High CPU: {cpu:.0f}%")
+                    send_event(api_key, agent_id, session_id, "resource_spike", f"cpu:{cpu:.0f}%", 70, "ALERT")
+                    logger.warning(f"[SENTRY] High CPU: {cpu:.0f}%")
                 if mem > 2048:
-                    score = 65
-                    send_event(api_key, agent_id, session_id, "resource_spike", f"memory:{mem:.0f}MB", score, "ALERT")
-                    logger.warning(f"[MONITOR] High memory: {mem:.0f}MB")
+                    send_event(api_key, agent_id, session_id, "resource_spike", f"memory:{mem:.0f}MB", 65, "ALERT")
+                    logger.warning(f"[SENTRY] High memory: {mem:.0f}MB")
+            except (psutil.AccessDenied, AttributeError):
+                pass
+
+            # Monitor child processes
+            try:
+                for child in ps_proc.children(recursive=True):
+                    cmd = " ".join(child.cmdline()) if child.cmdline() else str(child.pid)
+                    blocked = any(p.strip("*") in cmd for p in blocked_resources)
+                    score = 65 if blocked else 40
+                    decision = "BLOCK" if blocked else ("ALERT" if score >= alert_threshold else "ALLOW")
+                    if blocked:
+                        send_event(api_key, agent_id, session_id, "execute", cmd[:100], score, decision)
+                        logger.warning(f"[SENTRY] Blocked subprocess: {cmd[:100]}")
+                        child.terminate()
             except (psutil.AccessDenied, AttributeError):
                 pass
 
         except psutil.NoSuchProcess:
             break
 
-        time.sleep(0.5)
+        time.sleep(0.1)  # 100ms polling - much faster than before
+
+    # Stop watchdog
+    if watchdog_observer:
+        watchdog_observer.stop()
+        watchdog_observer.join()
 
 
 def cmd_run(args):
