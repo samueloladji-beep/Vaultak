@@ -538,19 +538,84 @@ footer {
 }
 
 @media (max-width: 900px) {
+  /* NAV */
   nav { padding: 0 20px; }
   .nav-links { display: none; }
-  [style*="grid-template-columns:repeat(5"] { grid-template-columns: 1fr 1fr !important; }
-  [style*="grid-template-columns:repeat(3"] { grid-template-columns: 1fr !important; }
+
+  /* HERO */
   .hero { padding: 100px 20px 60px; }
+  .hero-title { font-size: clamp(32px, 9vw, 52px); }
+  .hero-sub { font-size: 15px; }
+  .hero-actions { flex-direction: column; align-items: center; gap: 12px; }
+  .hero-actions a, .hero-actions button { width: 100%; max-width: 320px; text-align: center; justify-content: center; }
+  #hero-email { width: 100% !important; max-width: 320px; }
+
+  /* THREAT BAR */
   .stats-bar-inner { grid-template-columns: 1fr; }
-  .stat-item { border-right: none; border-bottom: 1px solid var(--border); padding: 32px 24px; }
+  .stat-item { border-right: none !important; border-bottom: 1px solid var(--border); padding: 28px 24px; }
+  .stat-item:last-child { border-bottom: none; }
+
+  /* SECTIONS */
   .section { padding: 64px 20px; }
-  .steps-grid, .modes-grid { grid-template-columns: 1fr; }
-  .code-inner { grid-template-columns: 1fr; padding: 64px 20px; gap: 40px; }
+  .section-heading { font-size: clamp(28px, 8vw, 44px); }
+
+  /* CAPABILITIES GRID (5-col to 2-col) */
+  [style*="grid-template-columns:repeat(5"] {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1px !important;
+  }
+  [style*="grid-template-columns:repeat(3"] { grid-template-columns: 1fr !important; }
+
+  /* ARCHITECTURE & INLINE PADDINGS */
+  [style*="padding:96px 48px"] { padding: 60px 20px !important; }
+  [style*="min-width:800px"] { min-width: 0 !important; width: 100% !important; }
+
+  /* INTEGRATION SECTION (2-col to 1-col) */
+  [style*="grid-template-columns:1fr 1fr;gap:24px;max-width:960px"] {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  [style*="min-width:320px"], [style*="min-width:300px"] {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* CODE BLOCKS */
+  .code-inner { grid-template-columns: 1fr; padding: 40px 20px; gap: 32px; }
+  pre, code { font-size: 12px !important; overflow-x: auto; white-space: pre; }
+
+  /* STEPS & MODES */
+  .steps-grid, .modes-grid { grid-template-columns: 1fr; gap: 16px; }
+
+  /* SCENARIO CARDS */
+  [style*="padding:32px"][style*="border-radius:16px"] { padding: 24px 20px !important; }
+
+  /* SECURITY TRUST 2-col to 1-col */
+  [style*="grid-template-columns:1fr 1fr"][style*="gap:48px"],
+  [style*="grid-template-columns:1fr 1fr"][style*="gap:40px"] {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+
+  /* CTA */
+  .cta-section { padding: 64px 20px; }
+
+  /* FOOTER */
   footer { padding: 24px 20px; }
-  .footer-inner { flex-direction: column; gap: 20px; text-align: center; }
-  .cta-section { padding: 80px 20px; }
+  .footer-inner { flex-direction: column; gap: 24px; text-align: center; }
+  .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 20px; }
+  .footer-cols { grid-template-columns: 1fr 1fr !important; gap: 24px !important; }
+  .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+
+  /* GLOBAL OVERFLOW GUARD */
+  section, div { max-width: 100%; }
+  img, svg { max-width: 100%; height: auto; }
+}
+
+@media (max-width: 400px) {
+  .hero-title { font-size: 28px; }
+  [style*="grid-template-columns:repeat(5"] { grid-template-columns: 1fr !important; }
+  .footer-cols { grid-template-columns: 1fr !important; }
 }
 </style>
 </head>
