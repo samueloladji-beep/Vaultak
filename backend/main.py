@@ -2053,3 +2053,79 @@ def serve_blog_how_to_test_ai_agent_security():
 def serve_download():
     p = os.path.join(os.path.dirname(__file__), "download.html")
     return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
+
+# ─── Stripe Billing ───────────────────────────────────────────────────────────
+PRICE_MAP = {
+    "pro":        os.environ.get("STRIPE_PRICE_PRO",        "price_1TLEhERUosaN5vQcNkrKtxHq"),
+    "team":       os.environ.get("STRIPE_PRICE_TEAM",       "price_1TLEhCRUosaN5vQcBRQAcQgw"),
+    "business":   os.environ.get("STRIPE_PRICE_BUSINESS",   "price_1TLEhBRUosaN5vQcdHkvAcCk"),
+    "enterprise": os.environ.get("STRIPE_PRICE_ENTERPRISE", "price_1TLEhDRUosaN5vQc8D5tLFLH"),
+}
+
+@app.post("/api/billing/checkout")
+def create_checkout(request: Request, plan: str = Body(..., embed=True), org_id: str = Depends(get_org), db=Depends(get_db)):
+    price_id = PRICE_MAP.get(plan)
+    if not price_id:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="subscription",
+            line_items=[{"price": price_id, "quantity": 1}],
+            success_url="https://app.vaultak.com?view=billing&success=1",
+            cancel_url="https://app.vaultak.com?view=billing",
+            metadata={"org_id": org_id},
+        )
+        return {"checkout_url": session.url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/billing/portal")
+def billing_portal(org_id: str = Depends(get_org), db=Depends(get_db)):
+    try:
+        with db.cursor() as cur:
+            cur.execute("SELECT stripe_customer_id FROM organizations WHERE id = %s", (org_id,))
+            row = cur.fetchone()
+        if not row or not row.get("stripe_customer_id"):
+            raise HTTPException(status_code=404, detail="No billing account found")
+        session = stripe.billing_portal.Session.create(
+            customer=row["stripe_customer_id"],
+            return_url="https://app.vaultak.com?view=billing",
+        )
+        return {"portal_url": session.url}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/stripe/webhook")
+async def stripe_webhook(request: Request, db=Depends(get_db)):
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+    secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+    try:
+        event = stripe.Webhook.construct_event(payload, sig, secret)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid signature")
+    if event["type"] == "checkout.session.completed":
+        s = event["data"]["object"]
+        org_id = s.get("metadata", {}).get("org_id")
+        customer_id = s.get("customer")
+        subscription_id = s.get("subscription")
+        if org_id:
+            with db.cursor() as cur:
+                cur.execute("UPDATE organizations SET stripe_customer_id=%s, stripe_subscription_id=%s WHERE id=%s",
+                            (customer_id, subscription_id, org_id))
+            db.commit()
+    elif event["type"] in ("customer.subscription.updated", "customer.subscription.deleted"):
+        sub = event["data"]["object"]
+        status = sub.get("status")
+        customer_id = sub.get("customer")
+        plan = "starter"
+        if status == "active":
+            price_id = sub["items"]["data"][0]["price"]["id"] if sub.get("items") else None
+            plan = {v: k for k, v in PRICE_MAP.items()}.get(price_id, "starter")
+        with db.cursor() as cur:
+            cur.execute("UPDATE organizations SET plan=%s WHERE stripe_customer_id=%s", (plan, customer_id))
+        db.commit()
+    return {"received": True}
