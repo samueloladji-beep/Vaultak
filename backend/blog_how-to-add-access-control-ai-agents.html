@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<title>How to Add Access Control to AI Agents - Vaultak</title>
+<meta name="description" content="Role-based and resource-based access control for AI agents in multi-tenant environments."/>
+<meta name="keywords" content="AI agent access control, AI agent RBAC, AI agent permissions, AI agent multi-tenant security"/>
+<meta property="og:title" content="How to Add Access Control to AI Agents"/>
+<meta property="og:description" content="Role-based and resource-based access control for AI agents in multi-tenant environments."/>
+<meta name="robots" content="index, follow"/>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How do I implement RBAC for AI agents?","acceptedAnswer":{"@type":"Answer","text":"Use vt.roles.create() to define roles with allowed and blocked actions, then assign roles when monitoring agents."}},{"@type":"Question","name":"How do I prevent AI agents from accessing other tenants data?","acceptedAnswer":{"@type":"Answer","text":"Use Vaultak tenant isolation policies that restrict agents to resources matching their own tenant ID."}},{"@type":"Question","name":"Can I give different agents different permission levels?","acceptedAnswer":{"@type":"Answer","text":"Yes. Create different Vaultak roles for each agent type and assign the appropriate role at monitor time."}},{"@type":"Question","name":"How do I enforce least privilege for AI agents?","acceptedAnswer":{"@type":"Answer","text":"Start with a default-deny policy and explicitly allow only the minimum actions each agent needs for its task."}}]}</script>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#060609;color:#ede9e4;font-family:Inter,sans-serif;min-height:100vh}body::before{content:'';position:fixed;top:-20%;left:-10%;width:65%;height:65%;background:radial-gradient(ellipse,rgba(99,88,255,0.1) 0%,transparent 70%);pointer-events:none;z-index:0}.container{max-width:720px;margin:0 auto;padding:40px 24px;position:relative;z-index:1}.brand{font-size:18px;font-weight:700;color:#fff;margin-bottom:8px}.nav{font-size:13px;color:#8a8695;margin-bottom:48px}.nav a{color:#a89fe0;text-decoration:none}.post-tag{display:inline-block;background:rgba(99,88,255,0.12);border:1px solid rgba(99,88,255,0.25);color:#a89fe0;font-size:11px;font-family:monospace;padding:4px 12px;border-radius:20px;margin-bottom:16px;letter-spacing:.08em}h1{font-size:36px;font-weight:700;color:#fff;line-height:1.15;letter-spacing:-.5px;margin-bottom:16px}.meta{font-size:13px;color:#44414f;margin-bottom:40px;font-family:monospace}h2{font-size:22px;font-weight:600;color:#fff;margin:40px 0 14px}h3{font-size:17px;font-weight:600;color:#fff;margin:28px 0 10px}p{font-size:15px;color:#8a8695;line-height:1.85;margin-bottom:18px}ul,ol{padding-left:20px;margin-bottom:18px}li{font-size:15px;color:#8a8695;line-height:1.85;margin-bottom:8px}strong{color:#ede9e4;font-weight:500}code{font-family:monospace;font-size:13px;background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:4px;color:#a89fe0}pre{background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px 24px;margin:24px 0;overflow-x:auto}pre code{background:none;padding:0;font-size:13px;line-height:1.8;color:#a89fe0}.cta{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:32px;margin:48px 0;text-align:center}.cta-title{font-size:20px;font-weight:600;color:#fff;margin-bottom:8px}.cta-desc{font-size:14px;color:#8a8695;margin-bottom:20px}.cta-btn{display:inline-block;background:#fff;color:#000;padding:11px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px}blockquote{border-left:3px solid rgba(99,88,255,0.5);padding-left:20px;margin:24px 0;color:#6b6880;font-style:italic}table{width:100%;border-collapse:collapse;margin:24px 0}th{text-align:left;font-size:11px;font-family:monospace;letter-spacing:.1em;color:#44414f;text-transform:uppercase;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.08)}td{font-size:14px;color:#8a8695;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.05)}.faq{margin:40px 0}.faq-item{border-bottom:1px solid rgba(255,255,255,0.06);padding:20px 0}.faq-q{font-size:16px;font-weight:600;color:#fff;margin-bottom:8px}.faq-a{font-size:14px;color:#8a8695;line-height:1.8}</style>
+</head>
+<body>
+<div class="container">
+<div class="brand">Vaultak</div>
+<div class="nav"><a href="https://vaultak.com">Home</a> &middot; <a href="https://vaultak.com/blog">Blog</a> &middot; How to Add Access Control to AI Agents</div>
+<div class="post-tag">TUTORIAL</div>
+<h1>How to Add Access Control to AI Agents</h1>
+<p class="meta">Vaultak Engineering &middot; 2026</p>
+<p>Different agents serving different tenants, teams, or functions should have strictly separated access to data and capabilities. Access control is critical for enterprise AI deployments.</p>
+<h2>Role-Based Access Control</h2>
+<pre><code>pip install vaultak</code></pre>
+<pre><code>from vaultak import Vaultak
+
+vt = Vaultak(api_key="vtk_your_key")
+
+vt.roles.create("read-only", {"allowed_actions":["read","search","list"],"blocked_actions":["write","delete","execute"]})
+vt.roles.create("analyst", {"allowed_actions":["read","aggregate","export"],"blocked_resources":["*pii*","*credentials*"]})
+
+with vt.monitor("reporting-agent", role="read-only"):
+    agent.run()</code></pre>
+<h2>Tenant Isolation</h2>
+<pre><code>vt.policy.create({"name":"tenant-isolation","action":"*","resource":"*","condition":"resource.tenant_id == agent.tenant_id","effect":"allow"})
+vt.policy.create({"name":"block-cross-tenant","action":"*","resource":"*","effect":"deny","priority":100})</code></pre>
+<div class="cta"><div class="cta-title">Enforce these policies automatically with Vaultak</div><div class="cta-desc">Runtime security for AI agents. Monitor every action, block risky operations, and roll back damage automatically.</div><a href="https://app.vaultak.com" class="cta-btn">Get started free &rarr;</a></div>
+<div class="faq"><h2>Frequently Asked Questions</h2><div class="faq-item"><div class="faq-q">How do I implement RBAC for AI agents?</div><div class="faq-a">Use vt.roles.create() to define roles with allowed and blocked actions, then assign roles when monitoring agents.</div></div><div class="faq-item"><div class="faq-q">How do I prevent AI agents from accessing other tenants data?</div><div class="faq-a">Use Vaultak tenant isolation policies that restrict agents to resources matching their own tenant ID.</div></div><div class="faq-item"><div class="faq-q">Can I give different agents different permission levels?</div><div class="faq-a">Yes. Create different Vaultak roles for each agent type and assign the appropriate role at monitor time.</div></div><div class="faq-item"><div class="faq-q">How do I enforce least privilege for AI agents?</div><div class="faq-a">Start with a default-deny policy and explicitly allow only the minimum actions each agent needs for its task.</div></div></div>
+</div>
+</body>
+</html>

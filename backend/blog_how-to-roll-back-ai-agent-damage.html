@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<title>How to Roll Back Damage from an AI Agent - Vaultak</title>
+<meta name="description" content="Instantly undo damage caused by AI agents using Vaultak rollback engine and state snapshots."/>
+<meta name="keywords" content="AI agent rollback, undo AI agent damage, AI agent recovery, AI agent security"/>
+<meta property="og:title" content="How to Roll Back Damage from an AI Agent"/>
+<meta property="og:description" content="Instantly undo damage caused by AI agents using Vaultak rollback engine and state snapshots."/>
+<meta name="robots" content="index, follow"/>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Can I undo what an AI agent did?","acceptedAnswer":{"@type":"Answer","text":"Yes. Vaultak rollback engine snapshots state before high-risk actions, allowing instant restoration via dashboard or API."}},{"@type":"Question","name":"How do I recover from AI agent data corruption?","acceptedAnswer":{"@type":"Answer","text":"Enable vt.rollback.enable() in your agent code. Restore from the snapshot taken before the harmful action."}},{"@type":"Question","name":"How long does Vaultak keep rollback snapshots?","acceptedAnswer":{"@type":"Answer","text":"Configurable - default is 24 hours. Enterprise plans support longer retention periods."}},{"@type":"Question","name":"Can I roll back database changes made by an AI agent?","acceptedAnswer":{"@type":"Answer","text":"Yes. Vaultak captures database state before destructive operations and can restore it on demand."}}]}</script>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#060609;color:#ede9e4;font-family:Inter,sans-serif;min-height:100vh}body::before{content:'';position:fixed;top:-20%;left:-10%;width:65%;height:65%;background:radial-gradient(ellipse,rgba(99,88,255,0.1) 0%,transparent 70%);pointer-events:none;z-index:0}.container{max-width:720px;margin:0 auto;padding:40px 24px;position:relative;z-index:1}.brand{font-size:18px;font-weight:700;color:#fff;margin-bottom:8px}.nav{font-size:13px;color:#8a8695;margin-bottom:48px}.nav a{color:#a89fe0;text-decoration:none}.post-tag{display:inline-block;background:rgba(99,88,255,0.12);border:1px solid rgba(99,88,255,0.25);color:#a89fe0;font-size:11px;font-family:monospace;padding:4px 12px;border-radius:20px;margin-bottom:16px;letter-spacing:.08em}h1{font-size:36px;font-weight:700;color:#fff;line-height:1.15;letter-spacing:-.5px;margin-bottom:16px}.meta{font-size:13px;color:#44414f;margin-bottom:40px;font-family:monospace}h2{font-size:22px;font-weight:600;color:#fff;margin:40px 0 14px}h3{font-size:17px;font-weight:600;color:#fff;margin:28px 0 10px}p{font-size:15px;color:#8a8695;line-height:1.85;margin-bottom:18px}ul,ol{padding-left:20px;margin-bottom:18px}li{font-size:15px;color:#8a8695;line-height:1.85;margin-bottom:8px}strong{color:#ede9e4;font-weight:500}code{font-family:monospace;font-size:13px;background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:4px;color:#a89fe0}pre{background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px 24px;margin:24px 0;overflow-x:auto}pre code{background:none;padding:0;font-size:13px;line-height:1.8;color:#a89fe0}.cta{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:32px;margin:48px 0;text-align:center}.cta-title{font-size:20px;font-weight:600;color:#fff;margin-bottom:8px}.cta-desc{font-size:14px;color:#8a8695;margin-bottom:20px}.cta-btn{display:inline-block;background:#fff;color:#000;padding:11px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px}blockquote{border-left:3px solid rgba(99,88,255,0.5);padding-left:20px;margin:24px 0;color:#6b6880;font-style:italic}table{width:100%;border-collapse:collapse;margin:24px 0}th{text-align:left;font-size:11px;font-family:monospace;letter-spacing:.1em;color:#44414f;text-transform:uppercase;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.08)}td{font-size:14px;color:#8a8695;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.05)}.faq{margin:40px 0}.faq-item{border-bottom:1px solid rgba(255,255,255,0.06);padding:20px 0}.faq-q{font-size:16px;font-weight:600;color:#fff;margin-bottom:8px}.faq-a{font-size:14px;color:#8a8695;line-height:1.8}</style>
+</head>
+<body>
+<div class="container">
+<div class="brand">Vaultak</div>
+<div class="nav"><a href="https://vaultak.com">Home</a> &middot; <a href="https://vaultak.com/blog">Blog</a> &middot; How to Roll Back Damage from an AI Agent</div>
+<div class="post-tag">TUTORIAL</div>
+<h1>How to Roll Back Damage from an AI Agent</h1>
+<p class="meta">Vaultak Engineering &middot; 2026</p>
+<p>When an AI agent causes unintended damage, the first question is always: can we undo this? With Vaultak rollback engine, the answer is yes.</p>
+<h2>Enabling Rollback</h2>
+<pre><code>pip install vaultak</code></pre>
+<pre><code>from vaultak import Vaultak
+
+vt = Vaultak(api_key="vtk_your_key")
+
+vt.rollback.enable(snapshot_before=["delete","update","write","execute"], max_snapshots=50, retention_hours=24)</code></pre>
+<h2>Rolling Back via API</h2>
+<pre><code>history = vt.rollback.history(agent_id="production-agent")
+vt.rollback.restore(snapshot_id=history[0]["snapshot_id"])</code></pre>
+<h2>What Can Be Rolled Back</h2>
+<ul>
+<li>Database record changes (INSERT, UPDATE, DELETE)</li>
+<li>File system changes (created, modified, or deleted files)</li>
+<li>Configuration changes</li>
+<li>API calls with reversible effects</li>
+</ul>
+<blockquote>Prevention is better than rollback. Use Vaultak policies to block dangerous actions before they happen. Rollback is your last line of defense.</blockquote>
+<div class="cta"><div class="cta-title">Enforce these policies automatically with Vaultak</div><div class="cta-desc">Runtime security for AI agents. Monitor every action, block risky operations, and roll back damage automatically.</div><a href="https://app.vaultak.com" class="cta-btn">Get started free &rarr;</a></div>
+<div class="faq"><h2>Frequently Asked Questions</h2><div class="faq-item"><div class="faq-q">Can I undo what an AI agent did?</div><div class="faq-a">Yes. Vaultak rollback engine snapshots state before high-risk actions, allowing instant restoration via dashboard or API.</div></div><div class="faq-item"><div class="faq-q">How do I recover from AI agent data corruption?</div><div class="faq-a">Enable vt.rollback.enable() in your agent code. Restore from the snapshot taken before the harmful action.</div></div><div class="faq-item"><div class="faq-q">How long does Vaultak keep rollback snapshots?</div><div class="faq-a">Configurable - default is 24 hours. Enterprise plans support longer retention periods.</div></div><div class="faq-item"><div class="faq-q">Can I roll back database changes made by an AI agent?</div><div class="faq-a">Yes. Vaultak captures database state before destructive operations and can restore it on demand.</div></div></div>
+</div>
+</body>
+</html>

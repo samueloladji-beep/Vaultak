@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<title>How to Limit What an AI Agent Can Do - Vaultak</title>
+<meta name="description" content="Restrict AI agent capabilities with allowlists, denylists, and policy-based access control."/>
+<meta name="keywords" content="limit AI agent capabilities, restrict AI agent, AI agent permissions, AI agent policy"/>
+<meta property="og:title" content="How to Limit What an AI Agent Can Do"/>
+<meta property="og:description" content="Restrict AI agent capabilities with allowlists, denylists, and policy-based access control."/>
+<meta name="robots" content="index, follow"/>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How do I restrict what tools an AI agent can use?","acceptedAnswer":{"@type":"Answer","text":"Use Vaultak allowlist approach - deny all actions by default, then explicitly allow only the tools the agent needs."}},{"@type":"Question","name":"Can I limit an AI agent to read-only access?","acceptedAnswer":{"@type":"Answer","text":"Yes. Create Vaultak policies that deny all write, delete, and update actions while allowing read operations."}},{"@type":"Question","name":"How do I restrict an AI agent to specific data?","acceptedAnswer":{"@type":"Answer","text":"Use resource patterns in Vaultak policies to limit the agent to specific tables, directories, or data namespaces."}},{"@type":"Question","name":"Can I schedule when an AI agent is allowed to operate?","acceptedAnswer":{"@type":"Answer","text":"Yes. Vaultak time-window policies restrict agent operation to specific hours, days, or date ranges."}}]}</script>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#060609;color:#ede9e4;font-family:Inter,sans-serif;min-height:100vh}body::before{content:'';position:fixed;top:-20%;left:-10%;width:65%;height:65%;background:radial-gradient(ellipse,rgba(99,88,255,0.1) 0%,transparent 70%);pointer-events:none;z-index:0}.container{max-width:720px;margin:0 auto;padding:40px 24px;position:relative;z-index:1}.brand{font-size:18px;font-weight:700;color:#fff;margin-bottom:8px}.nav{font-size:13px;color:#8a8695;margin-bottom:48px}.nav a{color:#a89fe0;text-decoration:none}.post-tag{display:inline-block;background:rgba(99,88,255,0.12);border:1px solid rgba(99,88,255,0.25);color:#a89fe0;font-size:11px;font-family:monospace;padding:4px 12px;border-radius:20px;margin-bottom:16px;letter-spacing:.08em}h1{font-size:36px;font-weight:700;color:#fff;line-height:1.15;letter-spacing:-.5px;margin-bottom:16px}.meta{font-size:13px;color:#44414f;margin-bottom:40px;font-family:monospace}h2{font-size:22px;font-weight:600;color:#fff;margin:40px 0 14px}h3{font-size:17px;font-weight:600;color:#fff;margin:28px 0 10px}p{font-size:15px;color:#8a8695;line-height:1.85;margin-bottom:18px}ul,ol{padding-left:20px;margin-bottom:18px}li{font-size:15px;color:#8a8695;line-height:1.85;margin-bottom:8px}strong{color:#ede9e4;font-weight:500}code{font-family:monospace;font-size:13px;background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:4px;color:#a89fe0}pre{background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px 24px;margin:24px 0;overflow-x:auto}pre code{background:none;padding:0;font-size:13px;line-height:1.8;color:#a89fe0}.cta{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:32px;margin:48px 0;text-align:center}.cta-title{font-size:20px;font-weight:600;color:#fff;margin-bottom:8px}.cta-desc{font-size:14px;color:#8a8695;margin-bottom:20px}.cta-btn{display:inline-block;background:#fff;color:#000;padding:11px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px}blockquote{border-left:3px solid rgba(99,88,255,0.5);padding-left:20px;margin:24px 0;color:#6b6880;font-style:italic}table{width:100%;border-collapse:collapse;margin:24px 0}th{text-align:left;font-size:11px;font-family:monospace;letter-spacing:.1em;color:#44414f;text-transform:uppercase;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.08)}td{font-size:14px;color:#8a8695;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.05)}.faq{margin:40px 0}.faq-item{border-bottom:1px solid rgba(255,255,255,0.06);padding:20px 0}.faq-q{font-size:16px;font-weight:600;color:#fff;margin-bottom:8px}.faq-a{font-size:14px;color:#8a8695;line-height:1.8}</style>
+</head>
+<body>
+<div class="container">
+<div class="brand">Vaultak</div>
+<div class="nav"><a href="https://vaultak.com">Home</a> &middot; <a href="https://vaultak.com/blog">Blog</a> &middot; How to Limit What an AI Agent Can Do</div>
+<div class="post-tag">TUTORIAL</div>
+<h1>How to Limit What an AI Agent Can Do</h1>
+<p class="meta">Vaultak Engineering &middot; 2026</p>
+<p>The most effective AI agent security control is also the simplest: give the agent fewer capabilities. An agent that cannot delete files cannot accidentally delete your database.</p>
+<h2>Tool-Level Restrictions with Vaultak</h2>
+<pre><code>pip install vaultak</code></pre>
+<pre><code>from vaultak import Vaultak
+
+vt = Vaultak(api_key="vtk_your_key")
+
+# Default deny
+vt.policy.create({"name":"default-deny","action":"*","resource":"*","effect":"deny","priority":100})
+
+# Explicitly allow only what is needed
+vt.policy.create({"name":"allow-search","action":"web_search","resource":"*","effect":"allow","priority":1})
+vt.policy.create({"name":"allow-read-docs","action":"read_file","resource":"documents/*","effect":"allow","priority":1})</code></pre>
+<h2>Resource-Level Restrictions</h2>
+<pre><code>vt.policy.create({"name":"read-only-db","action":"write","resource":"*_database","effect":"deny","priority":1})
+vt.policy.create({"name":"own-tenant-only","action":"*","resource":"tenant_{tenant_id}/*","effect":"allow","priority":1})</code></pre>
+<h2>Time Window Restrictions</h2>
+<pre><code>vt.policy.create({"name":"business-hours-only","action":"*","resource":"*","effect":"deny","time_window":{"outside_hours":"09:00-17:00","timezone":"UTC"}})</code></pre>
+<div class="cta"><div class="cta-title">Enforce these policies automatically with Vaultak</div><div class="cta-desc">Runtime security for AI agents. Monitor every action, block risky operations, and roll back damage automatically.</div><a href="https://app.vaultak.com" class="cta-btn">Get started free &rarr;</a></div>
+<div class="faq"><h2>Frequently Asked Questions</h2><div class="faq-item"><div class="faq-q">How do I restrict what tools an AI agent can use?</div><div class="faq-a">Use Vaultak allowlist approach - deny all actions by default, then explicitly allow only the tools the agent needs.</div></div><div class="faq-item"><div class="faq-q">Can I limit an AI agent to read-only access?</div><div class="faq-a">Yes. Create Vaultak policies that deny all write, delete, and update actions while allowing read operations.</div></div><div class="faq-item"><div class="faq-q">How do I restrict an AI agent to specific data?</div><div class="faq-a">Use resource patterns in Vaultak policies to limit the agent to specific tables, directories, or data namespaces.</div></div><div class="faq-item"><div class="faq-q">Can I schedule when an AI agent is allowed to operate?</div><div class="faq-a">Yes. Vaultak time-window policies restrict agent operation to specific hours, days, or date ranges.</div></div></div>
+</div>
+</body>
+</html>

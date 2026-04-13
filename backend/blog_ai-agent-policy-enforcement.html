@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<title>AI Agent Policy Enforcement - A Complete Guide - Vaultak</title>
+<meta name="description" content="How to define, deploy, and enforce security policies for AI agents at runtime."/>
+<meta name="keywords" content="AI agent policy enforcement, AI agent policies, AI agent access control, AI agent security"/>
+<meta property="og:title" content="AI Agent Policy Enforcement - A Complete Guide"/>
+<meta property="og:description" content="How to define, deploy, and enforce security policies for AI agents at runtime."/>
+<meta name="robots" content="index, follow"/>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is AI agent policy enforcement?","acceptedAnswer":{"@type":"Answer","text":"Evaluating every agent action against security rules before execution and blocking or allowing based on the result."}},{"@type":"Question","name":"How do Vaultak policies work?","acceptedAnswer":{"@type":"Answer","text":"Policies match on action and resource using exact or wildcard patterns. The lowest priority number wins when multiple policies match."}},{"@type":"Question","name":"Can I use wildcards in Vaultak policies?","acceptedAnswer":{"@type":"Answer","text":"Yes. Use * for any value, prefix* for prefix matching, and *suffix for suffix matching in action and resource fields."}},{"@type":"Question","name":"What happens when an agent action is blocked by policy?","acceptedAnswer":{"@type":"Answer","text":"The action is prevented from executing, logged with full details, and an alert is sent if configured."}}]}</script>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#060609;color:#ede9e4;font-family:Inter,sans-serif;min-height:100vh}body::before{content:'';position:fixed;top:-20%;left:-10%;width:65%;height:65%;background:radial-gradient(ellipse,rgba(99,88,255,0.1) 0%,transparent 70%);pointer-events:none;z-index:0}.container{max-width:720px;margin:0 auto;padding:40px 24px;position:relative;z-index:1}.brand{font-size:18px;font-weight:700;color:#fff;margin-bottom:8px}.nav{font-size:13px;color:#8a8695;margin-bottom:48px}.nav a{color:#a89fe0;text-decoration:none}.post-tag{display:inline-block;background:rgba(99,88,255,0.12);border:1px solid rgba(99,88,255,0.25);color:#a89fe0;font-size:11px;font-family:monospace;padding:4px 12px;border-radius:20px;margin-bottom:16px;letter-spacing:.08em}h1{font-size:36px;font-weight:700;color:#fff;line-height:1.15;letter-spacing:-.5px;margin-bottom:16px}.meta{font-size:13px;color:#44414f;margin-bottom:40px;font-family:monospace}h2{font-size:22px;font-weight:600;color:#fff;margin:40px 0 14px}h3{font-size:17px;font-weight:600;color:#fff;margin:28px 0 10px}p{font-size:15px;color:#8a8695;line-height:1.85;margin-bottom:18px}ul,ol{padding-left:20px;margin-bottom:18px}li{font-size:15px;color:#8a8695;line-height:1.85;margin-bottom:8px}strong{color:#ede9e4;font-weight:500}code{font-family:monospace;font-size:13px;background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:4px;color:#a89fe0}pre{background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px 24px;margin:24px 0;overflow-x:auto}pre code{background:none;padding:0;font-size:13px;line-height:1.8;color:#a89fe0}.cta{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:32px;margin:48px 0;text-align:center}.cta-title{font-size:20px;font-weight:600;color:#fff;margin-bottom:8px}.cta-desc{font-size:14px;color:#8a8695;margin-bottom:20px}.cta-btn{display:inline-block;background:#fff;color:#000;padding:11px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px}blockquote{border-left:3px solid rgba(99,88,255,0.5);padding-left:20px;margin:24px 0;color:#6b6880;font-style:italic}table{width:100%;border-collapse:collapse;margin:24px 0}th{text-align:left;font-size:11px;font-family:monospace;letter-spacing:.1em;color:#44414f;text-transform:uppercase;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.08)}td{font-size:14px;color:#8a8695;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.05)}.faq{margin:40px 0}.faq-item{border-bottom:1px solid rgba(255,255,255,0.06);padding:20px 0}.faq-q{font-size:16px;font-weight:600;color:#fff;margin-bottom:8px}.faq-a{font-size:14px;color:#8a8695;line-height:1.8}</style>
+</head>
+<body>
+<div class="container">
+<div class="brand">Vaultak</div>
+<div class="nav"><a href="https://vaultak.com">Home</a> &middot; <a href="https://vaultak.com/blog">Blog</a> &middot; AI Agent Policy Enforcement - A Complete Guide</div>
+<div class="post-tag">GUIDE</div>
+<h1>AI Agent Policy Enforcement - A Complete Guide</h1>
+<p class="meta">Vaultak Engineering &middot; 2026</p>
+<p>Policy enforcement means evaluating every agent action against a set of rules before execution and blocking or allowing based on the result. It operates at runtime because agent behavior emerges from reasoning that cannot be fully predicted.</p>
+<h2>Policy Structure in Vaultak</h2>
+<pre><code>{
+  "name": "policy-name",
+  "action": "delete | write | read | execute | *",
+  "resource": "production_* | *.env | users_table | *",
+  "effect": "allow | deny | pause",
+  "priority": 1,
+  "time_window": {"hours": "09:00-17:00"},
+  "condition": "risk_score < 0.7"
+}</code></pre>
+<h2>Priority and Conflict Resolution</h2>
+<p>When multiple policies match an action, the lowest priority number wins. Use priority 1 for critical security policies that should never be overridden.</p>
+<pre><code>from vaultak import Vaultak
+vt = Vaultak(api_key="vtk_your_key")
+
+vt.policy.create({"name":"no-prod-delete","action":"delete","resource":"prod_*","effect":"deny","priority":1})
+vt.policy.create({"name":"alert-writes","action":"write","resource":"*","effect":"allow","priority":10,"notify":["slack"]})</code></pre>
+<h2>Wildcard Matching</h2>
+<p>Vaultak policies support wildcard matching. Use <code>*</code> for any value, <code>prod_*</code> for prefix matching, and <code>*.env</code> for suffix matching.</p>
+<div class="cta"><div class="cta-title">Enforce these policies automatically with Vaultak</div><div class="cta-desc">Runtime security for AI agents. Monitor every action, block risky operations, and roll back damage automatically.</div><a href="https://app.vaultak.com" class="cta-btn">Get started free &rarr;</a></div>
+<div class="faq"><h2>Frequently Asked Questions</h2><div class="faq-item"><div class="faq-q">What is AI agent policy enforcement?</div><div class="faq-a">Evaluating every agent action against security rules before execution and blocking or allowing based on the result.</div></div><div class="faq-item"><div class="faq-q">How do Vaultak policies work?</div><div class="faq-a">Policies match on action and resource using exact or wildcard patterns. The lowest priority number wins when multiple policies match.</div></div><div class="faq-item"><div class="faq-q">Can I use wildcards in Vaultak policies?</div><div class="faq-a">Yes. Use * for any value, prefix* for prefix matching, and *suffix for suffix matching in action and resource fields.</div></div><div class="faq-item"><div class="faq-q">What happens when an agent action is blocked by policy?</div><div class="faq-a">The action is prevented from executing, logged with full details, and an alert is sent if configured.</div></div></div>
+</div>
+</body>
+</html>

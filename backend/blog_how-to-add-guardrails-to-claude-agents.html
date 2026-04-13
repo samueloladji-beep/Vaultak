@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<title>How to Add Guardrails to Claude AI Agents - Vaultak</title>
+<meta name="description" content="Security guardrails for Anthropic Claude agents - policy enforcement, tool restriction, and monitoring."/>
+<meta name="keywords" content="Claude agent security, Anthropic Claude guardrails, secure Claude agent, AI agent security"/>
+<meta property="og:title" content="How to Add Guardrails to Claude AI Agents"/>
+<meta property="og:description" content="Security guardrails for Anthropic Claude agents - policy enforcement, tool restriction, and monitoring."/>
+<meta name="robots" content="index, follow"/>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How do I add guardrails to a Claude agent?","acceptedAnswer":{"@type":"Answer","text":"Intercept tool calls with vt.check() before execution and use Vaultak policies to define what the agent can and cannot do."}},{"@type":"Question","name":"Can Vaultak protect against prompt injection in Claude agents?","acceptedAnswer":{"@type":"Answer","text":"Yes. Vaultak behavioral deviation detection flags actions inconsistent with the agent configured purpose."}},{"@type":"Question","name":"How do I audit what my Claude agent did?","acceptedAnswer":{"@type":"Answer","text":"Every tool call is logged by Vaultak with timestamps, risk scores, and full argument details at app.vaultak.com."}},{"@type":"Question","name":"Does Vaultak work with Claude tool use API?","acceptedAnswer":{"@type":"Answer","text":"Yes. Vaultak works at the tool execution layer and is compatible with all Claude models that support tool use."}}]}</script>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#060609;color:#ede9e4;font-family:Inter,sans-serif;min-height:100vh}body::before{content:'';position:fixed;top:-20%;left:-10%;width:65%;height:65%;background:radial-gradient(ellipse,rgba(99,88,255,0.1) 0%,transparent 70%);pointer-events:none;z-index:0}.container{max-width:720px;margin:0 auto;padding:40px 24px;position:relative;z-index:1}.brand{font-size:18px;font-weight:700;color:#fff;margin-bottom:8px}.nav{font-size:13px;color:#8a8695;margin-bottom:48px}.nav a{color:#a89fe0;text-decoration:none}.post-tag{display:inline-block;background:rgba(99,88,255,0.12);border:1px solid rgba(99,88,255,0.25);color:#a89fe0;font-size:11px;font-family:monospace;padding:4px 12px;border-radius:20px;margin-bottom:16px;letter-spacing:.08em}h1{font-size:36px;font-weight:700;color:#fff;line-height:1.15;letter-spacing:-.5px;margin-bottom:16px}.meta{font-size:13px;color:#44414f;margin-bottom:40px;font-family:monospace}h2{font-size:22px;font-weight:600;color:#fff;margin:40px 0 14px}h3{font-size:17px;font-weight:600;color:#fff;margin:28px 0 10px}p{font-size:15px;color:#8a8695;line-height:1.85;margin-bottom:18px}ul,ol{padding-left:20px;margin-bottom:18px}li{font-size:15px;color:#8a8695;line-height:1.85;margin-bottom:8px}strong{color:#ede9e4;font-weight:500}code{font-family:monospace;font-size:13px;background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:4px;color:#a89fe0}pre{background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px 24px;margin:24px 0;overflow-x:auto}pre code{background:none;padding:0;font-size:13px;line-height:1.8;color:#a89fe0}.cta{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:32px;margin:48px 0;text-align:center}.cta-title{font-size:20px;font-weight:600;color:#fff;margin-bottom:8px}.cta-desc{font-size:14px;color:#8a8695;margin-bottom:20px}.cta-btn{display:inline-block;background:#fff;color:#000;padding:11px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px}blockquote{border-left:3px solid rgba(99,88,255,0.5);padding-left:20px;margin:24px 0;color:#6b6880;font-style:italic}table{width:100%;border-collapse:collapse;margin:24px 0}th{text-align:left;font-size:11px;font-family:monospace;letter-spacing:.1em;color:#44414f;text-transform:uppercase;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.08)}td{font-size:14px;color:#8a8695;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.05)}.faq{margin:40px 0}.faq-item{border-bottom:1px solid rgba(255,255,255,0.06);padding:20px 0}.faq-q{font-size:16px;font-weight:600;color:#fff;margin-bottom:8px}.faq-a{font-size:14px;color:#8a8695;line-height:1.8}</style>
+</head>
+<body>
+<div class="container">
+<div class="brand">Vaultak</div>
+<div class="nav"><a href="https://vaultak.com">Home</a> &middot; <a href="https://vaultak.com/blog">Blog</a> &middot; How to Add Guardrails to Claude AI Agents</div>
+<div class="post-tag">TUTORIAL</div>
+<h1>How to Add Guardrails to Claude AI Agents</h1>
+<p class="meta">Vaultak Engineering &middot; 2026</p>
+<p>Claude agents with tool access can take real-world actions. The most common risks are overly broad tool permissions, prompt injection via tool results, and lack of audit trails for compliance.</p>
+<h2>Adding Vaultak to Claude Tool Use</h2>
+<pre><code>pip install vaultak</code></pre>
+<pre><code>from vaultak import Vaultak
+import anthropic
+
+vt = Vaultak(api_key="vtk_your_key")
+
+def secure_tool_execution(tool_name, tool_input):
+    check = vt.check(action=tool_name, resource=str(tool_input), agent_id="claude-prod-agent")
+    if check.decision == "block":
+        return f"Tool execution blocked: {check.reason}"
+    return execute_tool(tool_name, tool_input)</code></pre>
+<h2>Policy Templates for Claude Agents</h2>
+<pre><code>vt.policy.create({"name":"no-production-deletes","action":"bash","resource":"*rm -rf*","effect":"deny","priority":1})
+vt.policy.create({"name":"restrict-file-access","action":"read_file","resource":"/etc/*","effect":"deny","priority":1})</code></pre>
+<h2>Prompt Injection Defense</h2>
+<p>Vaultak detects behavioral deviations that indicate injection attempts and blocks them before execution. An agent that suddenly tries to send data externally after processing a document is flagged immediately.</p>
+<div class="cta"><div class="cta-title">Enforce these policies automatically with Vaultak</div><div class="cta-desc">Runtime security for AI agents. Monitor every action, block risky operations, and roll back damage automatically.</div><a href="https://app.vaultak.com" class="cta-btn">Get started free &rarr;</a></div>
+<div class="faq"><h2>Frequently Asked Questions</h2><div class="faq-item"><div class="faq-q">How do I add guardrails to a Claude agent?</div><div class="faq-a">Intercept tool calls with vt.check() before execution and use Vaultak policies to define what the agent can and cannot do.</div></div><div class="faq-item"><div class="faq-q">Can Vaultak protect against prompt injection in Claude agents?</div><div class="faq-a">Yes. Vaultak behavioral deviation detection flags actions inconsistent with the agent configured purpose.</div></div><div class="faq-item"><div class="faq-q">How do I audit what my Claude agent did?</div><div class="faq-a">Every tool call is logged by Vaultak with timestamps, risk scores, and full argument details at app.vaultak.com.</div></div><div class="faq-item"><div class="faq-q">Does Vaultak work with Claude tool use API?</div><div class="faq-a">Yes. Vaultak works at the tool execution layer and is compatible with all Claude models that support tool use.</div></div></div>
+</div>
+</body>
+</html>

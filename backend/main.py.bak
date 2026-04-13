@@ -1,41 +1,5 @@
 import os, json, hashlib, secrets, time, logging
-
-# Vaultak security modules
-try:
-    from vaultak_pii import PIIMasker, PIIType
-    HAS_PII = True
-except ImportError:
-    HAS_PII = False
-
-try:
-    from vaultak_siem import SIEMRouter, normalize_event
-    _siem_router = SIEMRouter.from_env()
-    HAS_SIEM = True
-except ImportError:
-    HAS_SIEM = False
-    _siem_router = None
-
-try:
-    from vaultak_redteam import RedTeamEngine
-    HAS_REDTEAM = True
-except ImportError:
-    HAS_REDTEAM = False
-
-try:
-    from vaultak_shadow_ai import ShadowAIDetector
-    HAS_SHADOW_AI = True
-except ImportError:
-    HAS_SHADOW_AI = False
 from typing import Any, Dict, Optional, List
-import stripe
-stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
-STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_PRICES = {
-    "pro":        os.environ.get("STRIPE_PRICE_PRO", ""),
-    "team":       os.environ.get("STRIPE_PRICE_TEAM", ""),
-    "business":   os.environ.get("STRIPE_PRICE_BUSINESS", ""),
-    "enterprise": os.environ.get("STRIPE_PRICE_ENTERPRISE", ""),
-}
 from datetime import datetime, timezone
 import psycopg
 from psycopg.rows import dict_row
@@ -59,23 +23,19 @@ ADMIN_KEY = os.environ.get("ADMIN_KEY", "admin-change-me")
 
 def get_db():
     retries = 3
-    conn = None
     for attempt in range(retries):
         try:
             conn = psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=10)
-            break
+            try:
+                yield conn
+            finally:
+                conn.close()
+            return
         except Exception as e:
             if attempt == retries - 1:
                 logger.error(f"Database connection failed after {retries} attempts: {e}")
                 raise HTTPException(status_code=503, detail="Database unavailable")
             time.sleep(1)
-    try:
-        yield conn
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 def init_db():
     with psycopg.connect(DATABASE_URL) as conn:
@@ -341,6 +301,7 @@ def hash_key(key):
 def get_org(x_api_key: Optional[str] = Header(None), db=Depends(get_db)):
     if not x_api_key:
         raise HTTPException(status_code=401, detail="Missing API key")
+    check_rate_limit(x_api_key)
     try:
         with db.cursor() as cur:
             cur.execute("UPDATE api_keys SET last_used = NOW() WHERE key_hash = %s RETURNING org_id", (hash_key(x_api_key),))
@@ -429,35 +390,7 @@ def create_api_key(org_id: str, name: str = "default", db=Depends(get_db), _=Dep
 @app.post("/api/actions")
 def log_action(body: ActionLog, org_id: str = Depends(get_org), db=Depends(get_db)):
     try:
-        # ── Auto PII masking ──────────────────────────────────────────────
-        if HAS_PII:
-            try:
-                masker = PIIMasker()
-                if body.resource:
-                    result = masker.mask(body.resource)
-                    if result.pii_found:
-                        body.resource = result.masked_text
-                if body.payload:
-                    for k, v in body.payload.items():
-                        if isinstance(v, str):
-                            r = masker.mask(v)
-                            if r.pii_found:
-                                body.payload[k] = r.masked_text
-            except Exception:
-                pass
-
-        # ── Auto Shadow AI detection ──────────────────────────────────────
-        if HAS_SHADOW_AI and body.resource:
-            try:
-                detector = ShadowAIDetector()
-                shadow_result = detector.scan_text(body.resource)
-                if getattr(shadow_result, "detected", False):
-                    body.flag_reason = (body.flag_reason or "") + " [Shadow AI detected]"
-                    body.flagged = True
-            except Exception:
-                pass
-
-        # ── Compute risk score using 5-dimension engine ───────────────────
+        # Compute risk score using 5-dimension engine
         final_score, breakdown = compute_risk_score(
             action_type=body.action_type or "",
             resource=body.resource or "",
@@ -469,7 +402,7 @@ def log_action(body: ActionLog, org_id: str = Depends(get_org), db=Depends(get_d
         )
 
         # Auto-flag based on engine score
-        auto_flagged = final_score >= 0.30
+        auto_flagged = final_score >= 0.65
         flagged = body.flagged or auto_flagged
         flag_reason = body.flag_reason
         if auto_flagged and not flag_reason:
@@ -504,7 +437,7 @@ def log_action(body: ActionLog, org_id: str = Depends(get_org), db=Depends(get_d
 
             # Create alert if flagged
             if flagged:
-                level = "critical" if final_score >= 0.85 else "high" if final_score >= 0.60 else "medium"
+                level = "critical" if final_score >= 0.80 else "high" if final_score >= 0.65 else "medium"
                 cur.execute("""
                     INSERT INTO alerts (org_id, agent_id, action_id, level, message)
                     VALUES (%s, %s, %s, %s, %s)
@@ -512,14 +445,14 @@ def log_action(body: ActionLog, org_id: str = Depends(get_org), db=Depends(get_d
                       f"{body.action_type or 'Action'} on {body.resource or 'unknown'} — risk {final_score:.2f}"))
 
             # Auto-pause agent if in PAUSE mode and high risk
-            if body.kill_switch_mode == "PAUSE" and final_score >= 0.60:
+            if body.kill_switch_mode == "PAUSE" and final_score >= 0.80:
                 cur.execute("""
                     UPDATE agents SET paused = TRUE, updated_at = NOW()
                     WHERE org_id = %s AND agent_id = %s
                 """, (org_id, body.agent_id))
 
             # Auto-rollback if in ROLLBACK mode and critical risk
-            if body.kill_switch_mode == "ROLLBACK" and final_score >= 0.85:
+            if body.kill_switch_mode == "ROLLBACK" and final_score >= 0.90:
                 cur.execute("""
                     UPDATE actions SET rolled_back = TRUE, rollback_at = NOW(),
                     rollback_reason = 'auto-rollback: critical risk score'
@@ -532,42 +465,13 @@ def log_action(body: ActionLog, org_id: str = Depends(get_org), db=Depends(get_d
 
             db.commit()
 
-        # Emit to SIEM if configured
-        if HAS_SIEM and _siem_router:
-            try:
-                _siem_router.route({
-                    "agent_id":    body.agent_id,
-                    "action_type": body.action_type,
-                    "resource":    body.resource,
-                    "risk_score":  final_score,
-                    "decision":    "flag" if flagged else "allow",
-                    "reason":      flag_reason or "",
-                    "mode":        body.kill_switch_mode,
-                    "session_id":  body.session_id,
-                    "org_id":      org_id,
-                })
-            except Exception:
-                pass
-
-        # Determine decision for SDK response
-        score_100 = int(final_score * 100)
-        if score_100 >= 85:
-            decision = "ROLLBACK"
-        elif score_100 >= 60:
-            decision = "PAUSE"
-        elif score_100 >= 30:
-            decision = "ALERT"
-        else:
-            decision = "ALLOW"
-
         return {
             "logged": True,
             "action_id": action_id,
             "risk_score": final_score,
             "risk_breakdown": breakdown,
             "flagged": flagged,
-            "flag_reason": flag_reason,
-            "decision": decision,
+            "flag_reason": flag_reason
         }
     except HTTPException:
         raise
@@ -782,15 +686,6 @@ def serve_landing():
             html = f.read()
         html = html.replace("Vaultak · v0.5.1", f"Vaultak · v{version}")
         return HTMLResponse(content=html)
-
-@app.get("/scan", response_class=HTMLResponse)
-def serve_scan():
-    scan_path = os.path.join(os.path.dirname(__file__), "scan.html")
-    if os.path.exists(scan_path):
-        with open(scan_path, "r") as f:
-            html = f.read()
-        return HTMLResponse(content=html)
-    return HTMLResponse(content="Not found", status_code=404)
     return {"status": "ok", "service": "Vaultak API", "version": version}
 
 @app.post("/api/onboard")
@@ -807,12 +702,10 @@ def onboard_user(
         cur.execute("SELECT id FROM organizations WHERE slug = %s", (slug,))
         existing = cur.fetchone()
         if existing:
-            cur.execute("SELECT key_value FROM api_keys WHERE org_id = %s", (str(existing["id"]),))
+            cur.execute("SELECT key_prefix FROM api_keys WHERE org_id = %s", (str(existing["id"]),))
             key = cur.fetchone()
-            if key and key.get("key_value"):
-                return {"org_id": str(existing["id"]), "already_exists": False, "api_key": key["key_value"]}
             raw_key = f"vtk_{secrets.token_urlsafe(32)}"
-            cur.execute("UPDATE api_keys SET key_hash = %s, key_prefix = %s, key_value = %s WHERE org_id = %s", (hash_key(raw_key), raw_key[:12], raw_key, str(existing["id"])))
+            cur.execute("UPDATE api_keys SET key_hash = %s, key_prefix = %s WHERE org_id = %s", (hash_key(raw_key), raw_key[:12], str(existing["id"])))
             db.commit()
             return {"org_id": str(existing["id"]), "already_exists": False, "api_key": raw_key}
         cur.execute("INSERT INTO organizations (name, slug) VALUES (%s, %s) RETURNING id", (name, slug))
@@ -1337,7 +1230,7 @@ def pricing_page():
     .faq-item{border-bottom:1px solid rgba(255,255,255,0.07);padding:20px 0}
     .faq-q{font-size:15px;font-weight:500;color:#fff;margin-bottom:8px}
     .faq-a{font-size:14px;color:#8a8695;line-height:1.7}
-    @media(max-width:1100px){.plans{grid-template-columns:repeat(2,1fr) !important}} @media(max-width:640px){.plans{grid-template-columns:1fr !important}}
+    @media(max-width:768px){.plans{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -1348,112 +1241,52 @@ def pricing_page():
     <h1>Simple, transparent pricing</h1>
     <p class="subtitle">Start free. Scale as your agents do.</p>
 
-    <p style="text-align:center;font-size:13px;color:#555;margin-bottom:40px;font-style:italic;">Every competitor charges enterprise contract pricing starting at $50,000/year.<br>Vaultak is the only AI agent security platform with transparent self-serve pricing.</p>
-
-    <div class="plans" style="grid-template-columns:repeat(5,1fr);gap:12px;">
-
+    <div class="plans">
       <div class="plan">
         <div class="plan-name">Starter</div>
-        <div class="plan-price" style="font-size:30px;">$0<span>/mo</span></div>
-        <div class="plan-desc">For developers evaluating or building.</div>
+        <div class="plan-price">$0<span>/mo</span></div>
+        <div class="plan-desc">For individual developers and small projects.</div>
         <ul class="plan-features">
-          <li><span class="check">&#10003;</span> 1 agent</li>
-          <li><span class="check">&#10003;</span> 10,000 actions/mo</li>
-          <li><span class="check">&#10003;</span> 7-day audit log</li>
-          <li><span class="check">&#10003;</span> ALERT mode only</li>
-          <li><span class="check">&#10003;</span> Dashboard access</li>
-          <li><span class="check">&#10003;</span> Community support</li>
+          <li><span class="check">✓</span> Up to 3 agents</li>
+          <li><span class="check">✓</span> 10,000 actions/month</li>
+          <li><span class="check">✓</span> 7-day audit log retention</li>
+          <li><span class="check">✓</span> ALERT mode</li>
+          <li><span class="check">✓</span> Community support</li>
         </ul>
         <a href="https://app.vaultak.com" class="plan-btn plan-btn-outline">Get started free</a>
       </div>
 
-      <div class="plan">
-        <div class="plan-name">Pro</div>
-        <div class="plan-price" style="font-size:30px;">$49<span>/mo</span></div>
-        <div class="plan-desc">For developers running agents in production.</div>
-        <ul class="plan-features">
-          <li><span class="check">&#10003;</span> Up to 5 agents</li>
-          <li><span class="check">&#10003;</span> 100,000 actions/mo</li>
-          <li><span class="check">&#10003;</span> 30-day audit log</li>
-          <li><span class="check">&#10003;</span> ALERT, PAUSE, ROLLBACK</li>
-          <li><span class="check">&#10003;</span> Policy engine</li>
-          <li><span class="check">&#10003;</span> Email support</li>
-        </ul>
-        <a href="https://app.vaultak.com?view=billing" class="plan-btn plan-btn-outline">Get started</a>
-      </div>
-
       <div class="plan featured">
         <div class="plan-badge">Most popular</div>
-        <div class="plan-name">Team</div>
-        <div class="plan-price" style="font-size:30px;">$99<span>/mo</span></div>
-        <div class="plan-desc">For teams with multiple agents.</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">$49<span>/mo</span></div>
+        <div class="plan-desc">For teams running agents in production.</div>
         <ul class="plan-features">
-          <li><span class="check">&#10003;</span> Up to 15 agents</li>
-          <li><span class="check">&#10003;</span> 500,000 actions/mo</li>
-          <li><span class="check">&#10003;</span> 90-day audit log</li>
-          <li><span class="check">&#10003;</span> Everything in Pro</li>
-          <li><span class="check">&#10003;</span> PII masking</li>
-          <li><span class="check">&#10003;</span> Priority support</li>
+          <li><span class="check">✓</span> Unlimited agents</li>
+          <li><span class="check">✓</span> 500,000 actions/month</li>
+          <li><span class="check">✓</span> 90-day audit log retention</li>
+          <li><span class="check">✓</span> ALERT, PAUSE & ROLLBACK modes</li>
+          <li><span class="check">✓</span> Security policies</li>
+          <li><span class="check">✓</span> Permission profiles</li>
+          <li><span class="check">✓</span> Email support</li>
         </ul>
-        <a href="https://app.vaultak.com?view=billing" class="plan-btn plan-btn-light">Get started</a>
-      </div>
-
-      <div class="plan">
-        <div class="plan-name">Business</div>
-        <div class="plan-price" style="font-size:30px;">$299<span>/mo</span></div>
-        <div class="plan-desc">For companies with compliance requirements.</div>
-        <ul class="plan-features">
-          <li><span class="check">&#10003;</span> Up to 50 agents</li>
-          <li><span class="check">&#10003;</span> 2,000,000 actions/mo</li>
-          <li><span class="check">&#10003;</span> 1-year audit log</li>
-          <li><span class="check">&#10003;</span> Everything in Team</li>
-          <li><span class="check">&#10003;</span> SIEM integration</li>
-          <li><span class="check">&#10003;</span> Shadow AI detection</li>
-          <li><span class="check">&#10003;</span> SLA guarantee</li>
-        </ul>
-        <a href="https://app.vaultak.com?view=billing" class="plan-btn plan-btn-outline">Get started</a>
+        <a href="https://app.vaultak.com" class="plan-btn plan-btn-light">Start free trial</a>
       </div>
 
       <div class="plan">
         <div class="plan-name">Enterprise</div>
-        <div class="plan-price" style="font-size:24px;">From $999<span>/mo</span></div>
-        <div class="plan-desc">For large orgs with advanced security needs.</div>
+        <div class="plan-price">Custom</div>
+        <div class="plan-desc">For organizations with advanced security requirements.</div>
         <ul class="plan-features">
-          <li><span class="check">&#10003;</span> Unlimited agents</li>
-          <li><span class="check">&#10003;</span> Unlimited actions</li>
-          <li><span class="check">&#10003;</span> Unlimited audit log</li>
-          <li><span class="check">&#10003;</span> Everything in Business</li>
-          <li><span class="check">&#10003;</span> On-premises deployment</li>
-          <li><span class="check">&#10003;</span> SSO / SAML</li>
-          <li><span class="check">&#10003;</span> Dedicated support</li>
-          <li><span class="check">&#10003;</span> Custom contract</li>
+          <li><span class="check">✓</span> Everything in Pro</li>
+          <li><span class="check">✓</span> Unlimited actions</li>
+          <li><span class="check">✓</span> 1-year audit log retention</li>
+          <li><span class="check">✓</span> SSO / SAML</li>
+          <li><span class="check">✓</span> Custom SLA</li>
+          <li><span class="check">✓</span> Security review & DPA</li>
+          <li><span class="check">✓</span> Dedicated support</li>
         </ul>
         <a href="mailto:sales@vaultak.com" class="plan-btn plan-btn-outline">Contact sales</a>
-      </div>
-
-    </div>
-
-    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:28px 32px;margin-bottom:48px;">
-      <div style="font-size:11px;font-family:monospace;color:#555;letter-spacing:.1em;margin-bottom:16px;">HOW VAULTAK COMPARES</div>
-      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0;font-size:13px;">
-        <div style="color:#555;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">Capability</div>
-        <div style="color:#fff;font-weight:600;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.05);text-align:center;">Vaultak</div>
-        <div style="color:#555;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.05);text-align:center;">Others</div>
-        <div style="color:#8a8695;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">Transparent pricing</div>
-        <div style="color:#4ade80;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;">Yes</div>
-        <div style="color:#f87171;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;">No</div>
-        <div style="color:#8a8695;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">Self-serve signup</div>
-        <div style="color:#4ade80;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;">Yes</div>
-        <div style="color:#f87171;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;">Demo required</div>
-        <div style="color:#8a8695;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">Automatic rollback</div>
-        <div style="color:#4ade80;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;">Yes</div>
-        <div style="color:#f87171;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;">No</div>
-        <div style="color:#8a8695;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">Zero-code daemon</div>
-        <div style="color:#4ade80;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;">Yes</div>
-        <div style="color:#f87171;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;">No</div>
-        <div style="color:#8a8695;padding:8px 0;">Starting price</div>
-        <div style="color:#4ade80;padding:8px 12px;text-align:center;">$0 free</div>
-        <div style="color:#555;padding:8px 12px;text-align:center;">$50K+/year</div>
       </div>
     </div>
 
@@ -1461,27 +1294,19 @@ def pricing_page():
       <h2>Frequently asked questions</h2>
       <div class="faq-item">
         <div class="faq-q">What counts as an action?</div>
-        <div class="faq-a">An action is any event logged by a Vaultak-monitored agent — a file write, API call, database query, and so on. Each event intercepted by Vaultak Core or Vaultak Sentry counts as one action.</div>
+        <div class="faq-a">An action is any event logged by a Vaultak-monitored agent — a file write, API call, database query, etc. Each call to vt.monitor() or vt.log_action() counts as one action.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q">Can I upgrade or downgrade at any time?</div>
-        <div class="faq-a">Yes. Upgrades take effect immediately. Downgrades take effect at the start of the next billing cycle.</div>
+        <div class="faq-a">Yes. You can change your plan at any time. Upgrades take effect immediately. Downgrades take effect at the start of the next billing cycle.</div>
       </div>
       <div class="faq-item">
-        <div class="faq-q">Do paid plans include a free trial?</div>
-        <div class="faq-a">Yes. Pro, Team, and Business all include a 14-day free trial with no credit card required.</div>
+        <div class="faq-q">Do you offer a free trial for Pro?</div>
+        <div class="faq-a">Yes — Pro includes a 14-day free trial, no credit card required.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q">What happens if I exceed my action limit?</div>
-        <div class="faq-a">You will be notified at 80% of your limit. If you exceed it, monitoring continues and you will be prompted to upgrade. We never silently drop events.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">Why is Vaultak so much cheaper than enterprise alternatives?</div>
-        <div class="faq-a">Most enterprise AI security platforms are built for long procurement cycles with six-figure annual commitments. Vaultak is built for developers and security teams who need governance now, not after a 90-day sales cycle. You get the same runtime security capabilities at a fraction of the cost.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">Is on-premises deployment available?</div>
-        <div class="faq-a">Yes. On-premises deployment via Docker Compose or Kubernetes is available on the Enterprise plan. Your data never leaves your infrastructure.</div>
+        <div class="faq-a">We'll notify you when you reach 80% of your limit. If you exceed it, monitoring continues but you'll be prompted to upgrade. We never silently drop events.</div>
       </div>
     </div>
   </div>
@@ -1525,171 +1350,6 @@ def sitemap():
 </urlset>"""
     return Response(content=xml, media_type="application/xml")
 
-
-# Red Team
-class RedTeamRequest(BaseModel):
-    agent_description: str
-    capabilities: Optional[List[str]] = []
-
-@app.post("/api/redteam/scan")
-def redteam_scan(body: RedTeamRequest, org_id: str = Depends(get_org)):
-    if not HAS_REDTEAM:
-        raise HTTPException(status_code=503, detail="Red team module unavailable")
-    try:
-        engine = RedTeamEngine()
-        report = engine.scan(agent_description=body.agent_description, capabilities=body.capabilities)
-        return {"total_attacks": report.total_attacks, "vulnerabilities_found": report.vulnerabilities_found, "risk_score": report.risk_score, "findings": [{"category": str(f.category), "severity": f.severity, "description": f.description, "recommendation": f.recommendation} for f in report.findings], "summary": report.summary}
-    except Exception as e:
-        logger.error(f"Red team scan error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Shadow AI
-class ShadowAIScanRequest(BaseModel):
-    text: str
-    context: Optional[str] = None
-
-@app.get("/api/shadow-ai/status")
-def shadow_ai_status(org_id: str = Depends(get_org)):
-    if not HAS_SHADOW_AI:
-        raise HTTPException(status_code=503, detail="Shadow AI module unavailable")
-    return {"available": HAS_SHADOW_AI}
-
-@app.post("/api/shadow-ai/scan")
-def shadow_ai_scan(body: ShadowAIScanRequest, org_id: str = Depends(get_org)):
-    if not HAS_SHADOW_AI:
-        raise HTTPException(status_code=503, detail="Shadow AI module unavailable")
-    try:
-        detector = ShadowAIDetector()
-        result = detector.scan_text(body.text)
-        return {"detected": result.detected, "services": getattr(result, "services", []), "risk_level": getattr(result, "risk_level", "unknown")}
-    except Exception as e:
-        logger.error(f"Shadow AI scan error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ── Stripe Billing ─────────────────────────────────────────────────────────────
-
-class CheckoutRequest(BaseModel):
-    plan: str  # pro | team | business | enterprise
-    success_url: str = "https://app.vaultak.com?upgrade=success"
-    cancel_url: str = "https://app.vaultak.com?upgrade=cancelled"
-
-@app.post("/api/billing/checkout")
-def create_checkout(body: CheckoutRequest, org_id: str = Depends(get_org), db=Depends(get_db)):
-    price_id = STRIPE_PRICES.get(body.plan.lower())
-    if not price_id:
-        raise HTTPException(status_code=400, detail=f"Invalid plan: {body.plan}")
-    if not stripe.api_key:
-        raise HTTPException(status_code=503, detail="Billing not configured")
-    try:
-        # Get or create Stripe customer
-        with db.cursor() as cur:
-            cur.execute("SELECT stripe_customer_id, name FROM organizations WHERE id = %s", (org_id,))
-            row = cur.fetchone()
-
-        customer_id = row.get("stripe_customer_id") if row else None
-
-        if not customer_id:
-            customer = stripe.Customer.create(metadata={"org_id": org_id})
-            customer_id = customer.id
-            with db.cursor() as cur:
-                cur.execute("UPDATE organizations SET stripe_customer_id = %s WHERE id = %s",
-                           (customer_id, org_id))
-                db.commit()
-
-        session = stripe.checkout.Session.create(
-            customer=customer_id,
-            payment_method_types=["card"],
-            line_items=[{"price": price_id, "quantity": 1}],
-            mode="subscription",
-            success_url=body.success_url,
-            cancel_url=body.cancel_url,
-            metadata={"org_id": org_id, "plan": body.plan},
-        )
-        return {"checkout_url": session.url, "session_id": session.id}
-    except stripe.StripeError as e:
-        logger.error(f"Stripe error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/billing/status")
-def billing_status(org_id: str = Depends(get_org), db=Depends(get_db)):
-    with db.cursor() as cur:
-        cur.execute("SELECT plan, stripe_customer_id, stripe_subscription_id FROM organizations WHERE id = %s", (org_id,))
-        row = cur.fetchone()
-    return {
-        "plan": row.get("plan", "starter") if row else "starter",
-        "has_billing": bool(row.get("stripe_customer_id") if row else False),
-    }
-
-@app.post("/api/billing/portal")
-def billing_portal(org_id: str = Depends(get_org), db=Depends(get_db)):
-    with db.cursor() as cur:
-        cur.execute("SELECT stripe_customer_id FROM organizations WHERE id = %s", (org_id,))
-        row = cur.fetchone()
-    if not row or not row.get("stripe_customer_id"):
-        raise HTTPException(status_code=404, detail="No billing account found")
-    try:
-        session = stripe.billing_portal.Session.create(
-            customer=row["stripe_customer_id"],
-            return_url="https://app.vaultak.com",
-        )
-        return {"portal_url": session.url}
-    except stripe.StripeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-from fastapi import Request
-@app.post("/api/stripe/webhook")
-async def stripe_webhook(request: Request, db=Depends(get_db)):
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        org_id = session.get("metadata", {}).get("org_id")
-        plan = session.get("metadata", {}).get("plan", "pro")
-        sub_id = session.get("subscription")
-        if org_id:
-            with db.cursor() as cur:
-                cur.execute(
-                    "UPDATE organizations SET plan = %s, stripe_subscription_id = %s WHERE id = %s",
-                    (plan, sub_id, org_id)
-                )
-                db.commit()
-
-    elif event["type"] == "customer.subscription.deleted":
-        sub = event["data"]["object"]
-        customer_id = sub.get("customer")
-        with db.cursor() as cur:
-            cur.execute(
-                "UPDATE organizations SET plan = 'starter', stripe_subscription_id = NULL WHERE stripe_customer_id = %s",
-                (customer_id,)
-            )
-            db.commit()
-
-    elif event["type"] == "customer.subscription.updated":
-        sub = event["data"]["object"]
-        customer_id = sub.get("customer")
-        status = sub.get("status")
-        if status == "active":
-            with db.cursor() as cur:
-                cur.execute(
-                    "UPDATE organizations SET stripe_subscription_id = %s WHERE stripe_customer_id = %s",
-                    (sub["id"], customer_id)
-                )
-                db.commit()
-
-    return {"status": "ok"}
-
-
-@app.get("/download")
-def download_page():
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/#download", status_code=302)
-
 @app.get("/sitemap.xml")
 def sitemap():
     from fastapi.responses import Response
@@ -1732,93 +1392,6 @@ def whitepaper():
 def serve_favicon():
     favicon_path = os.path.join(os.path.dirname(__file__), "favicon.svg")
     return FileResponse(favicon_path, media_type="image/svg+xml")
-
-# ─── PII Masking Endpoints ───────────────────────────────────────────────────
-
-class PIIMaskRequest(BaseModel):
-    text: str
-    strategy: Optional[str] = "partial"
-    disabled_types: Optional[List[str]] = []
-
-@app.post("/api/pii/mask")
-def mask_pii(body: PIIMaskRequest, org_id: str = Depends(get_org)):
-    """Mask PII in text before it reaches an agent or is returned to a user."""
-    if not HAS_PII:
-        raise HTTPException(status_code=503, detail="PII module not available")
-    if not body.text:
-        raise HTTPException(status_code=400, detail="text is required")
-    try:
-        disabled = []
-        for t in (body.disabled_types or []):
-            try:
-                disabled.append(PIIType(t))
-            except ValueError:
-                pass
-        masker = PIIMasker(strategy=body.strategy or "partial", disabled_types=disabled)
-        result = masker.mask(body.text)
-        return {
-            "masked":      result.masked,
-            "pii_found":   result.pii_found,
-            "risk_score":  result.risk_score,
-            "detections": [
-                {"type": m.pii_type.value, "confidence": m.confidence}
-                for m in result.matches
-            ],
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/pii/scan")
-def scan_pii(body: PIIMaskRequest, org_id: str = Depends(get_org)):
-    """Scan text for PII without masking. Returns detection report only."""
-    if not HAS_PII:
-        raise HTTPException(status_code=503, detail="PII module not available")
-    try:
-        masker = PIIMasker()
-        result = masker.mask(body.text or "")
-        return {
-            "pii_found":  result.pii_found,
-            "risk_score": result.risk_score,
-            "count":      len(result.matches),
-            "types":      list(set(m.pii_type.value for m in result.matches)),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ─── SIEM Endpoints ───────────────────────────────────────────────────────────
-
-class SIEMWebhookConfig(BaseModel):
-    url: str
-    secret: Optional[str] = None
-    headers: Optional[Dict[str, str]] = None
-
-@app.get("/api/siem/status")
-def siem_status(org_id: str = Depends(get_org)):
-    """Return SIEM router status and connector stats."""
-    if not HAS_SIEM or not _siem_router:
-        return {"enabled": False, "connectors": []}
-    return {
-        "enabled":    True,
-        "connectors": [c.name for c in _siem_router.connectors],
-        "stats":      _siem_router.stats(),
-    }
-
-@app.post("/api/siem/test")
-def siem_test(org_id: str = Depends(get_org)):
-    """Send a test event to all configured SIEM connectors."""
-    if not HAS_SIEM or not _siem_router:
-        raise HTTPException(status_code=503, detail="No SIEM connectors configured")
-    test_event = {
-        "agent_id":    "test-agent",
-        "action_type": "siem_test",
-        "resource":    "vaultak.siem.test",
-        "risk_score":  0.1,
-        "decision":    "allow",
-        "reason":      "SIEM connectivity test",
-        "org_id":      org_id,
-    }
-    _siem_router.route(test_event)
-    return {"sent": True, "connectors": len(_siem_router.connectors)}
 
 # ─── Policy Engine ─────────────────────────────────────────────────────────────
 
@@ -2017,227 +1590,3 @@ def delete_policy(policy_id: str, org_id: str = Depends(get_org), db=Depends(get
         cur.execute("DELETE FROM policies WHERE id = %s AND org_id = %s", (policy_id, org_id))
         db.commit()
     return {"deleted": True}
-
-
-# ─── MCP HTTP Endpoint (Smithery / Remote MCP) ────────────────────────────────
-
-from fastapi.responses import StreamingResponse
-import asyncio
-
-MCP_TOOLS = [
-    {
-        "name": "vaultak_risk_score",
-        "description": "Score an AI agent's risk level across 5 security dimensions: action type, resource sensitivity, blast radius, behavioral deviation, and time pattern. Returns a 0-100 composite score, risk tier (LOW/MODERATE/HIGH/CRITICAL), per-dimension breakdown, and Vaultak policy recommendations.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "agent_description": {"type": "string", "description": "What the agent does — its purpose, workflow, and behaviors."},
-                "capabilities": {"type": "array", "items": {"type": "string"}, "description": "List of tools/capabilities the agent has access to."}
-            },
-            "required": ["agent_description"]
-        }
-    },
-    {
-        "name": "vaultak_policy_check",
-        "description": "Check whether a specific agent action should be ALLOWED or BLOCKED based on Vaultak's policy engine. Evaluates action/resource pairs against policies using priority-based matching.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "action": {"type": "string", "description": "The action the agent wants to perform (delete, write, execute, send_email...)."},
-                "resource": {"type": "string", "description": "The resource being acted upon (production_db, s3://bucket/, smtp_server...)."},
-                "policies": {"type": "array", "items": {"type": "object"}, "description": "List of Vaultak policy objects to evaluate against.", "default": []}
-            },
-            "required": ["action", "resource"]
-        }
-    },
-    {
-        "name": "vaultak_get_policy_templates",
-        "description": "Get ready-to-use Vaultak policy templates for common AI agent security scenarios: database protection, file system limits, API rate limiting, PII protection, production safeguards.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "scenario": {"type": "string", "enum": ["database_protection", "file_system_limits", "api_rate_limiting", "pii_protection", "production_safeguards", "all"]}
-            },
-            "required": ["scenario"]
-        }
-    }
-]
-
-RISK_WEIGHTS = {"action_type": 0.25, "resource_sensitivity": 0.25, "blast_radius": 0.20, "behavioral_deviation": 0.15, "time_pattern": 0.15}
-
-def _score_agent(description: str, capabilities: list) -> dict:
-    text = (description + " " + " ".join(capabilities)).lower()
-    def count(kws): return sum(1 for w in kws if w in text)
-    a = min(100, count(["delete","drop","truncate","destroy","remove"])*25 + count(["write","insert","update","execute","deploy"])*15 + count(["send","email","publish"])*10)
-    r = min(100, count(["production","prod_"])*25 + count(["password","secret","credential","token","private key"])*30 + count(["pii","personal data","payment","credit card"])*25 + count(["s3","bucket","filesystem"])*15)
-    b = min(100, count(["all users","all records","bulk","batch","global","system-wide"])*30 + count(["mass","every record","without limit"])*35)
-    d = min(100, count(["unrestricted","unlimited","bypass","override","autonomous","self-modifying"])*35)
-    t = min(100, count(["scheduled","cron","background","always on","24/7","continuous"])*20 + 10)
-    composite = min(100, round(a*0.25 + r*0.25 + b*0.20 + d*0.15 + t*0.15))
-    tiers = [(0,30,"LOW","Agent operates within acceptable boundaries."),(30,60,"MODERATE","Risk factors present — review recommended."),(60,80,"HIGH","Significant risk — policy enforcement advised."),(80,101,"CRITICAL","Severe risk — immediate enforcement required.")]
-    tier, desc = next(((lb,ld) for lo,hi,lb,ld in tiers if lo <= composite < hi), ("LOW",""))
-    recs = []
-    if a >= 25: recs.append("Restrict destructive actions via Vaultak action-type policies.")
-    if r >= 20: recs.append("Block agent access to credentials and production resources.")
-    if b >= 20: recs.append("Cap bulk operations to limit blast radius.")
-    if d >= 20: recs.append("Enable behavioral deviation monitoring.")
-    if composite >= 60: recs.append("Enable Vaultak auto-pause threshold.")
-    if composite >= 80: recs.append("Enable Vaultak rollback engine.")
-    if not recs: recs.append("Risk profile acceptable. Add Vaultak monitoring for visibility.")
-    recs.append("Install: pip install vaultak | Docs: docs.vaultak.com")
-    return {"composite_score": composite, "risk_tier": tier, "tier_description": desc,
-            "dimensions": {"action_type": a, "resource_sensitivity": r, "blast_radius": b, "behavioral_deviation": d, "time_pattern": t},
-            "recommendations": recs}
-
-def _handle_mcp_request(body: dict) -> dict:
-    method = body.get("method", "")
-    req_id = body.get("id")
-    if method == "initialize":
-        return {"jsonrpc": "2.0", "id": req_id, "result": {"protocolVersion": "2025-11-25", "capabilities": {"tools": {"listChanged": False}}, "serverInfo": {"name": "vaultak-mcp", "version": APP_VERSION}}}
-    if method == "tools/list":
-        return {"jsonrpc": "2.0", "id": req_id, "result": {"tools": MCP_TOOLS}}
-    if method == "tools/call":
-        params = body.get("params", {})
-        tool = params.get("name", "")
-        args = params.get("arguments", {})
-        if tool == "vaultak_risk_score":
-            result = _score_agent(args.get("agent_description", ""), args.get("capabilities", []))
-            text = f"VAULTAK RISK ASSESSMENT\n\nScore: {result['composite_score']}/100 — {result['risk_tier']}\n{result['tier_description']}\n\nDIMENSIONS\n" + "\n".join(f"  {k}: {v}/100" for k,v in result['dimensions'].items()) + "\n\nRECOMMENDATIONS\n" + "\n".join(f"  • {r}" for r in result['recommendations']) + "\n\nPowered by Vaultak — vaultak.com"
-            return {"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": text}]}}
-        if tool == "vaultak_policy_check":
-            import fnmatch
-            action = args.get("action", "").lower()
-            resource = args.get("resource", "").lower()
-            policies = args.get("policies", [])
-            matched = next((p for p in sorted(policies, key=lambda x: x.get("priority", 50)) if fnmatch.fnmatch(action, p.get("action","*").lower()) and fnmatch.fnmatch(resource, p.get("resource","*").lower())), None)
-            decision = matched.get("effect", "allow").upper() if matched else "ALLOW"
-            reason = matched.get("description", "No matching policy — default allow.") if matched else "No matching policy found."
-            text = f"VAULTAK POLICY DECISION\n\nAction: {action}\nResource: {resource}\nDecision: {decision}\nReason: {reason}\n\nManage policies: app.vaultak.com\nPowered by Vaultak — vaultak.com"
-            return {"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": text}]}}
-        if tool == "vaultak_get_policy_templates":
-            templates = {
-                "database_protection": [{"name":"block-delete-prod","action":"delete","resource":"prod*","effect":"deny","priority":1},{"name":"allow-read","action":"read","resource":"*","effect":"allow","priority":10}],
-                "pii_protection": [{"name":"block-pii-export","action":"export","resource":"*users*","effect":"deny","priority":1},{"name":"block-pii-send","action":"send","resource":"*personal*","effect":"deny","priority":1}],
-                "production_safeguards": [{"name":"block-prod-delete","action":"delete","resource":"prod_*","effect":"deny","priority":1},{"name":"block-prod-deploy","action":"deploy","resource":"prod_*","effect":"deny","priority":1}],
-                "file_system_limits": [{"name":"block-system-files","action":"*","resource":"/etc/*","effect":"deny","priority":1},{"name":"allow-tmp","action":"write","resource":"/tmp/*","effect":"allow","priority":20}],
-                "api_rate_limiting": [{"name":"block-payment-api","action":"*","resource":"*payment*","effect":"deny","priority":1}],
-            }
-            selected = templates if args.get("scenario") == "all" else {args.get("scenario"): templates.get(args.get("scenario"), [])}
-            text = f"VAULTAK POLICY TEMPLATES\n\n{json.dumps(selected, indent=2)}\n\nAdd to dashboard: app.vaultak.com\nPowered by Vaultak — vaultak.com"
-            return {"jsonrpc": "2.0", "id": req_id, "result": {"content": [{"type": "text", "text": text}]}}
-        return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Unknown tool: {tool}"}}
-    if method == "notifications/initialized":
-        return None
-    return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Method not found: {method}"}}
-
-@app.post("/mcp")
-async def mcp_endpoint(request: dict):
-    response = _handle_mcp_request(request)
-    if response is None:
-        return {}
-    return response
-
-@app.get("/mcp")
-async def mcp_get():
-    return {"service": "vaultak-mcp", "version": APP_VERSION, "tools": [t["name"] for t in MCP_TOOLS], "docs": "docs.vaultak.com"}
-
-
-@app.get("/blog/ai-agent-policy-enforcement", response_class=HTMLResponse)
-def serve_blog_ai_agent_policy_enforcement():
-    p = os.path.join(os.path.dirname(__file__), "blog_ai-agent-policy-enforcement.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/ai-agent-security-best-practices", response_class=HTMLResponse)
-def serve_blog_ai_agent_security_best_practices():
-    p = os.path.join(os.path.dirname(__file__), "blog_ai-agent-security-best-practices.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/ai-agent-what-happens-when-rogue", response_class=HTMLResponse)
-def serve_blog_ai_agent_what_happens_when_rogue():
-    p = os.path.join(os.path.dirname(__file__), "blog_ai-agent-what-happens-when-rogue.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-add-access-control-ai-agents", response_class=HTMLResponse)
-def serve_blog_how_to_add_access_control_ai_agents():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-add-access-control-ai-agents.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-add-guardrails-to-claude-agents", response_class=HTMLResponse)
-def serve_blog_how_to_add_guardrails_to_claude_agents():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-add-guardrails-to-claude-agents.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-add-kill-switch-ai-agent", response_class=HTMLResponse)
-def serve_blog_how_to_add_kill_switch_ai_agent():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-add-kill-switch-ai-agent.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-audit-ai-agent-actions", response_class=HTMLResponse)
-def serve_blog_how_to_audit_ai_agent_actions():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-audit-ai-agent-actions.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-deploy-ai-agents-safely", response_class=HTMLResponse)
-def serve_blog_how_to_deploy_ai_agents_safely():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-deploy-ai-agents-safely.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-enforce-least-privilege-ai-agents", response_class=HTMLResponse)
-def serve_blog_how_to_enforce_least_privilege_ai_agents():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-enforce-least-privilege-ai-agents.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-limit-ai-agent-capabilities", response_class=HTMLResponse)
-def serve_blog_how_to_limit_ai_agent_capabilities():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-limit-ai-agent-capabilities.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-monitor-ai-agent-actions", response_class=HTMLResponse)
-def serve_blog_how_to_monitor_ai_agent_actions():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-monitor-ai-agent-actions.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-prevent-ai-agent-data-deletion", response_class=HTMLResponse)
-def serve_blog_how_to_prevent_ai_agent_data_deletion():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-prevent-ai-agent-data-deletion.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-prevent-ai-agent-sensitive-data-access", response_class=HTMLResponse)
-def serve_blog_how_to_prevent_ai_agent_sensitive_data_access():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-prevent-ai-agent-sensitive-data-access.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-prevent-prompt-injection-ai-agents", response_class=HTMLResponse)
-def serve_blog_how_to_prevent_prompt_injection_ai_agents():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-prevent-prompt-injection-ai-agents.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-roll-back-ai-agent-damage", response_class=HTMLResponse)
-def serve_blog_how_to_roll_back_ai_agent_damage():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-roll-back-ai-agent-damage.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-secure-autogpt-agents", response_class=HTMLResponse)
-def serve_blog_how_to_secure_autogpt_agents():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-secure-autogpt-agents.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-secure-crewai-agents", response_class=HTMLResponse)
-def serve_blog_how_to_secure_crewai_agents():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-secure-crewai-agents.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-secure-langgraph-agents", response_class=HTMLResponse)
-def serve_blog_how_to_secure_langgraph_agents():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-secure-langgraph-agents.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-secure-openai-assistants", response_class=HTMLResponse)
-def serve_blog_how_to_secure_openai_assistants():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-secure-openai-assistants.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
-
-@app.get("/blog/how-to-test-ai-agent-security", response_class=HTMLResponse)
-def serve_blog_how_to_test_ai_agent_security():
-    p = os.path.join(os.path.dirname(__file__), "blog_how-to-test-ai-agent-security.html")
-    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
