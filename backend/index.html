@@ -687,6 +687,80 @@ footer {
   </div>
 </div>
 
+<!-- INDUSTRY CONTEXT -->
+<section style="border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg2);padding:80px 20px;">
+  <div style="max-width:860px;margin:0 auto;">
+    <div class="section-label" style="text-align:center;margin-bottom:12px;">Industry context</div>
+    <h2 style="font-family:var(--serif);font-size:clamp(26px,4vw,38px);font-weight:400;color:var(--white);text-align:center;margin-bottom:8px;line-height:1.25;">
+      The world's leading security teams<br>are sounding the alarm.
+    </h2>
+    <p style="text-align:center;font-size:14px;color:var(--text3);margin-bottom:48px;max-width:520px;margin-left:auto;margin-right:auto;line-height:1.7;">
+      The following statements were made publicly by executives of Project Glasswing partners via <a href="https://www.anthropic.com/glasswing" target="_blank" style="color:var(--text3);text-decoration:underline;">anthropic.com/glasswing</a>, April 2026.
+    </p>
+    <div style="position:relative;overflow:hidden;">
+      <div id="glasswing-track" style="display:flex;transition:transform 0.4s ease;">
+        <div class="gq-slide" style="min-width:100%;padding:0 4px;">
+          <div style="background:#0d0d0d;border:1px solid var(--border);border-radius:16px;padding:40px 48px 36px;">
+            <div style="font-size:11px;font-family:var(--mono);font-weight:700;letter-spacing:.15em;color:rgba(255,255,255,0.5);margin-bottom:28px;">CISCO</div>
+            <blockquote style="font-family:var(--serif);font-size:clamp(17px,2.2vw,22px);color:var(--white);line-height:1.65;font-weight:400;margin:0 0 28px;font-style:italic;">
+              "The old ways of hardening systems are no longer sufficient. Providers of technology must aggressively adopt new approaches now, and customers need to be ready to deploy."
+            </blockquote>
+            <div>
+              <div style="font-size:13px;font-weight:500;color:var(--white);">Anthony Grieco</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:3px;">SVP &amp; Chief Security &amp; Trust Officer, Cisco &middot; via <a href="https://www.anthropic.com/glasswing" target="_blank" style="color:var(--text3);">Project Glasswing</a></div>
+            </div>
+          </div>
+        </div>
+        <div class="gq-slide" style="min-width:100%;padding:0 4px;">
+          <div style="background:#0d0d0d;border:1px solid var(--border);border-radius:16px;padding:40px 48px 36px;">
+            <div style="font-size:11px;font-family:var(--mono);font-weight:700;letter-spacing:.15em;color:rgba(255,255,255,0.5);margin-bottom:28px;">CROWDSTRIKE</div>
+            <blockquote style="font-family:var(--serif);font-size:clamp(17px,2.2vw,22px);color:var(--white);line-height:1.65;font-weight:400;margin:0 0 28px;font-style:italic;">
+              "The window between a vulnerability being discovered and being exploited by an adversary has collapsed — what once took months now happens in minutes with AI."
+            </blockquote>
+            <div>
+              <div style="font-size:13px;font-weight:500;color:var(--white);">Elia Zaitsev</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:3px;">Chief Technology Officer, CrowdStrike &middot; via <a href="https://www.anthropic.com/glasswing" target="_blank" style="color:var(--text3);">Project Glasswing</a></div>
+            </div>
+          </div>
+        </div>
+        <div class="gq-slide" style="min-width:100%;padding:0 4px;">
+          <div style="background:#0d0d0d;border:1px solid var(--border);border-radius:16px;padding:40px 48px 36px;">
+            <div style="font-size:11px;font-family:var(--mono);font-weight:700;letter-spacing:.15em;color:rgba(255,255,255,0.5);margin-bottom:28px;">MICROSOFT</div>
+            <blockquote style="font-family:var(--serif);font-size:clamp(17px,2.2vw,22px);color:var(--white);line-height:1.65;font-weight:400;margin:0 0 28px;font-style:italic;">
+              "As we enter a phase where cybersecurity is no longer bound by purely human capacity, the opportunity to use AI responsibly to improve security and reduce risk at scale is unprecedented."
+            </blockquote>
+            <div>
+              <div style="font-size:13px;font-weight:500;color:var(--white);">Igor Tsyganskiy</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:3px;">EVP of Cybersecurity &amp; Microsoft Research, Microsoft &middot; via <a href="https://www.anthropic.com/glasswing" target="_blank" style="color:var(--text3);">Project Glasswing</a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button onclick="gqPrev()" style="position:absolute;left:0;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--white);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;">&#8592;</button>
+      <button onclick="gqNext()" style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--white);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;">&#8594;</button>
+    </div>
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:24px;">
+      <button onclick="gqGo(0)" class="gq-dot" style="width:6px;height:6px;border-radius:50%;border:none;cursor:pointer;background:var(--white);padding:0;"></button>
+      <button onclick="gqGo(1)" class="gq-dot" style="width:6px;height:6px;border-radius:50%;border:none;cursor:pointer;background:rgba(255,255,255,0.2);padding:0;"></button>
+      <button onclick="gqGo(2)" class="gq-dot" style="width:6px;height:6px;border-radius:50%;border:none;cursor:pointer;background:rgba(255,255,255,0.2);padding:0;"></button>
+    </div>
+    <p style="text-align:center;font-size:14px;color:var(--text3);margin-top:40px;line-height:1.7;max-width:560px;margin-left:auto;margin-right:auto;">
+      Project Glasswing secures the code before deployment.<br>
+      <span style="color:var(--white);font-weight:500;">Vaultak secures what AI agents do after deployment.</span>
+    </p>
+  </div>
+</section>
+<script>
+  var gqIndex=0,gqTotal=3;
+  function gqUpdate(){
+    document.getElementById("glasswing-track").style.transform="translateX(-"+(gqIndex*100)+"%)";
+    document.querySelectorAll(".gq-dot").forEach(function(d,i){d.style.background=i===gqIndex?"var(--white)":"rgba(255,255,255,0.2)";});
+  }
+  function gqNext(){gqIndex=(gqIndex+1)%gqTotal;gqUpdate();}
+  function gqPrev(){gqIndex=(gqIndex-1+gqTotal)%gqTotal;gqUpdate();}
+  function gqGo(n){gqIndex=n;gqUpdate();}
+</script>
+
 <!-- WHAT VAULTAK DOES -->
 <section class="section" id="what">
   <div class="section-label">What Vaultak does</div>
