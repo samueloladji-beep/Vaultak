@@ -39,7 +39,7 @@ STRIPE_PRICES = {
 from datetime import datetime, timezone
 import psycopg
 from psycopg.rows import dict_row
-from fastapi import FastAPI, HTTPException, Depends, Header, BackgroundTasks, Body, Request
+from fastapi import FastAPI, HTTPException, Depends, Header, BackgroundTasks, Body, Request, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
