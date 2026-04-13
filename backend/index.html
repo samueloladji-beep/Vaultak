@@ -892,9 +892,9 @@ footer {
       <div style="font-size:22px;font-weight:700;color:#ffffff;margin-bottom:10px;">Five lines of code.</div>
       <div style="font-size:14px;color:#8a8695;line-height:1.7;margin-bottom:16px;">Full monitoring, real-time alerts, automatic pause and rollback — plus custom callbacks, programmatic policy enforcement, and deep instrumentation for complete agent control.</div>
       <!-- Language tabs -->
-      <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <button onclick="showLang('python')" id="tab-python" style="font-size:11px;font-family:monospace;padding:4px 12px;border-radius:4px;border:1px solid rgba(99,88,255,0.6);background:rgba(99,88,255,0.15);color:#a89fe0;cursor:pointer;">Python</button>
-        <button onclick="showLang('node')" id="tab-node" style="font-size:11px;font-family:monospace;padding:4px 12px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#6a6a8a;cursor:pointer;">Node.js</button>
+      <div style="display:flex;gap:0;margin-bottom:12px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;overflow:hidden;width:fit-content;">
+        <button onclick="showLang('python')" id="tab-python" style="font-size:12px;font-family:monospace;padding:6px 18px;border:none;background:rgba(255,255,255,0.12);color:#ffffff;cursor:pointer;font-weight:600;">Python</button>
+        <button onclick="showLang('node')" id="tab-node" style="font-size:12px;font-family:monospace;padding:6px 18px;border:none;border-left:1px solid rgba(255,255,255,0.15);background:transparent;color:#ffffff;cursor:pointer;font-weight:600;">Node.js</button>
       </div>
       <div id="code-python" style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px 22px;font-family:monospace;font-size:13px;line-height:2;">
         <div><span style="color:#7c6fe0;">from</span> <span style="color:#e0e0e0;">vaultak</span> <span style="color:#7c6fe0;">import</span> <span style="color:#a89fe0;">Vaultak</span></div>
@@ -918,12 +918,10 @@ footer {
         document.getElementById("code-node").style.display = lang === "node" ? "block" : "none";
         document.getElementById("install-python").style.display = lang === "python" ? "block" : "none";
         document.getElementById("install-node").style.display = lang === "node" ? "block" : "none";
-        document.getElementById("tab-python").style.background = lang === "python" ? "rgba(99,88,255,0.15)" : "transparent";
-        document.getElementById("tab-python").style.color = lang === "python" ? "#a89fe0" : "#6a6a8a";
-        document.getElementById("tab-python").style.borderColor = lang === "python" ? "rgba(99,88,255,0.6)" : "rgba(255,255,255,0.1)";
-        document.getElementById("tab-node").style.background = lang === "node" ? "rgba(99,88,255,0.15)" : "transparent";
-        document.getElementById("tab-node").style.color = lang === "node" ? "#a89fe0" : "#6a6a8a";
-        document.getElementById("tab-node").style.borderColor = lang === "node" ? "rgba(99,88,255,0.6)" : "rgba(255,255,255,0.1)";
+        document.getElementById("tab-python").style.background = lang === "python" ? "rgba(255,255,255,0.12)" : "transparent";
+        document.getElementById("tab-python").style.color = "#ffffff";
+        document.getElementById("tab-node").style.background = lang === "node" ? "rgba(255,255,255,0.12)" : "transparent";
+        document.getElementById("tab-node").style.color = "#ffffff";
       }
       </script>
     </div>
