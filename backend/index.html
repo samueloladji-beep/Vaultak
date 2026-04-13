@@ -732,11 +732,12 @@ footer {
         .arch-arrow { display:flex;flex-direction:column;align-items:center;padding:0 16px;flex-shrink:0; }
         .arch-dashboard { width:100%;margin-top:32px;display:flex;justify-content:center; }
         @media (max-width:900px) {
-          .arch-flow { flex-direction:column;gap:0;align-items:center; }
-          .arch-arrow { flex-direction:row;gap:8px;padding:8px 0;transform:rotate(90deg); }
+          .arch-flow { flex-direction:column !important;gap:0;align-items:center; }
+          .arch-arrow { flex-direction:column;align-items:center;padding:8px 0; }
+          .arch-arrow .arch-label { display:none; }
+          .arch-arrow-icon { transform:rotate(90deg);display:block; }
           .arch-dashboard { margin-top:24px; }
-          .arch-dashboard-inner { flex-direction:column;gap:8px;text-align:center;padding:16px !important; }
-          .arch-dashboard-inner a { display:block;margin-top:4px; }
+          .arch-dashboard-inner { flex-wrap:wrap;gap:8px;padding:16px !important;justify-content:center; }
         }
       </style>
       <div class="arch-flow">
@@ -751,8 +752,8 @@ footer {
 
         <!-- Arrow 1 -->
         <div class="arch-arrow">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-family:var(--mono);">every action</div>
-          <div style="color:var(--text3);font-size:20px;">&rarr;</div>
+          <div class="arch-label" style="font-size:11px;color:var(--text3);margin-bottom:6px;font-family:var(--mono);">every action</div>
+          <div class="arch-arrow-icon" style="color:var(--text3);font-size:20px;">&rarr;</div>
         </div>
 
         <!-- Vaultak -->
@@ -771,8 +772,8 @@ footer {
 
         <!-- Arrow 2 -->
         <div class="arch-arrow">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-family:var(--mono);">if allowed</div>
-          <div style="color:var(--text3);font-size:20px;">&rarr;</div>
+          <div class="arch-label" style="font-size:11px;color:var(--text3);margin-bottom:6px;font-family:var(--mono);">if allowed</div>
+          <div class="arch-arrow-icon" style="color:var(--text3);font-size:20px;">&rarr;</div>
         </div>
 
         <!-- Systems -->
