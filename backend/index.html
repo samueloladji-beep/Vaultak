@@ -537,17 +537,12 @@ footer {
   to { opacity: 1; transform: translateY(0); }
 }
 
-@media (min-width: 901px) {
-  .hamburger { display: none !important; }
-  .mobile-menu { display: none !important; }
-}
-
 @media (max-width: 900px) {
   /* NAV */
   nav { padding: 0 20px; }
   .nav-links { display: none; }
-  .hamburger { display: flex; }
-  .mobile-menu { display: block; }
+  .hamburger { display: flex !important; }
+  .mobile-menu { display: block !important; }
   .mobile-menu.open { max-height: 400px; opacity: 1; pointer-events: all; }
 
   /* HERO */
