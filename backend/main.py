@@ -791,6 +791,20 @@ def acknowledge_alert(alert_id: int, org_id: str = Depends(get_org), db=Depends(
         db.commit()
     return {"acknowledged": True}
 
+@app.post("/api/keys/regenerate")
+def regenerate_api_key(org_id: str = Depends(get_org), db=Depends(get_db)):
+    """Regenerate the org's API key — invalidates the old one immediately."""
+    import secrets, hashlib
+    new_key = "vtk_" + secrets.token_urlsafe(32)
+    new_hash = hashlib.sha256(new_key.encode()).hexdigest()
+    with db.cursor() as cur:
+        cur.execute(
+            "UPDATE api_keys SET key_hash = %s, key_prefix = %s WHERE org_id = %s",
+            (new_hash, new_key[:12], org_id)
+        )
+    db.commit()
+    return {"api_key": new_key, "prefix": new_key[:12]}
+
 @app.get("/api/org/plan")
 def get_org_plan(org_id: str = Depends(get_org), db=Depends(get_db)):
     """Return the org's current plan and usage stats."""
