@@ -20,7 +20,7 @@ except ImportError:
     HAS_REQUESTS = False
 
 APP_NAME    = "Vaultak Sentry"
-APP_VERSION = "1.0.2"
+APP_VERSION = "1.0.3"
 API_BASE    = "https://vaultak.com"
 CONFIG_DIR  = Path.home() / ".vaultak"
 CONFIG_FILE = CONFIG_DIR / "sentry_app.json"
