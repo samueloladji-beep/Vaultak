@@ -2214,9 +2214,25 @@ async def stripe_webhook(request: Request, db=Depends(get_db)):
         customer_id = s.get("customer")
         subscription_id = s.get("subscription")
         if org_id:
+            # Determine plan from line items metadata
+            plan = "starter"
+            price_id = None
+            try:
+                items = s.get("line_items", {}).get("data", [])
+                if items:
+                    price_id = items[0]["price"]["id"]
+                else:
+                    # Fall back to metadata
+                    price_id = s.get("metadata", {}).get("price_id")
+                if price_id:
+                    plan = {v: k for k, v in PRICE_MAP.items()}.get(price_id, "starter")
+            except Exception:
+                pass
             with db.cursor() as cur:
-                cur.execute("UPDATE organizations SET stripe_customer_id=%s, stripe_subscription_id=%s WHERE id=%s",
-                            (customer_id, subscription_id, org_id))
+                cur.execute("""UPDATE organizations
+                               SET stripe_customer_id=%s, stripe_subscription_id=%s, plan=%s
+                               WHERE id=%s""",
+                            (customer_id, subscription_id, plan, org_id))
             db.commit()
     elif event["type"] in ("customer.subscription.updated", "customer.subscription.deleted"):
         sub = event["data"]["object"]
