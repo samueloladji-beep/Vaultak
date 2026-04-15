@@ -20,7 +20,7 @@ except ImportError:
     HAS_REQUESTS = False
 
 APP_NAME    = "Vaultak Sentry"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.2"
 API_BASE    = "https://vaultak.com"
 CONFIG_DIR  = Path.home() / ".vaultak"
 CONFIG_FILE = CONFIG_DIR / "sentry_app.json"
@@ -318,7 +318,7 @@ class VaultakSentryApp(tk.Tk):
         self._setup_window()
         self._build()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
-        self.after(200, self._check_saved_config)
+        self.after(800, self._check_saved_config)
 
     def _setup_window(self):
         self.title(APP_NAME)
@@ -355,9 +355,14 @@ class VaultakSentryApp(tk.Tk):
         c.create_line(9, 13, 15, 21, 21, 13,
                       fill=WHITE, width=2.5, capstyle="round", joinstyle="round")
 
-        tk.Label(left, text="Vaultak Sentry",
+        title_frame = tk.Frame(left, bg=BG2)
+        title_frame.grid(row=0, column=1)
+        tk.Label(title_frame, text="Vaultak Sentry",
                  bg=BG2, fg=TEXT,
-                 font=("Helvetica", 17, "bold")).grid(row=0, column=1)
+                 font=("Helvetica", 17, "bold")).grid(row=0, column=0, sticky="w")
+        tk.Label(title_frame, text=f"v{APP_VERSION}",
+                 bg=BG2, fg=TEXT3,
+                 font=("Helvetica", 10)).grid(row=0, column=1, padx=(8,0), sticky="sw", pady=(0,2))
 
         self.hdr_status = tk.Label(hdr, text="Not connected",
                                    bg=BG2, fg=TEXT3,
@@ -395,6 +400,7 @@ class VaultakSentryApp(tk.Tk):
             else:
                 btn.config(bg=BG2, fg=TEXT2, font=("Helvetica", 12))
         self.active_tab = name
+        self.update_idletasks()
 
     # ── CONTENT SHELL ─────────────────────────────────────────────────────────
     def _build_content(self):
@@ -418,17 +424,9 @@ class VaultakSentryApp(tk.Tk):
         outer = self.tab_frames["setup"]
         outer.grid_rowconfigure(0, weight=1)
         outer.grid_columnconfigure(0, weight=1)
-        canvas = tk.Canvas(outer, bg=BG, highlightthickness=0)
-        scrollbar = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.grid(row=0, column=0, sticky="nsew")
-        scrollbar.grid(row=0, column=1, sticky="ns")
-        f = tk.Frame(canvas, bg=BG)
+        f = tk.Frame(outer, bg=BG)
+        f.grid(row=0, column=0, sticky="nsew")
         f.grid_columnconfigure(0, weight=1)
-        canvas_window = canvas.create_window((0,0), window=f, anchor="nw")
-        def on_resize(e): canvas.itemconfig(canvas_window, width=e.width)
-        canvas.bind("<Configure>", on_resize)
-        f.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         PAD = 28
         r = 0
 
@@ -707,57 +705,51 @@ class VaultakSentryApp(tk.Tk):
 
         sp(24)
 
-        tk.Label(f, text="AGENT NAME", bg=BG, fg=TEXT,
-                 font=("Helvetica", 11, "bold")).grid(
-            row=r, column=0, padx=PAD, sticky="w"); r+=1
-
-        sp(8)
-
-        name_frame = tk.Frame(f, bg=BG3,
-                              highlightbackground=BORDER, highlightthickness=1)
-        name_frame.grid(row=r, column=0, padx=PAD, sticky="ew"); r+=1
-        name_frame.grid_columnconfigure(0, weight=1)
-
-        self.agent_name_var = tk.StringVar(
-            value=self.config_data.get("agent_id", "my-agent"))
-        tk.Entry(name_frame,
-                 textvariable=self.agent_name_var,
-                 bg=BG3, fg=TEXT, insertbackground=TEXT,
-                 selectbackground=ACCENT, selectforeground=WHITE,
-                 relief="flat", bd=0, highlightthickness=0,
-                 font=("Helvetica", 12)).grid(
-            row=0, column=0, padx=16, pady=14, sticky="ew")
-
-        sp(20)
-
-        tk.Label(f, text="AGENT COMMAND", bg=BG, fg=TEXT,
+        # ── AGENTS SECTION ──────────────────────────────────────────
+        tk.Label(f, text="AGENTS", bg=BG, fg=TEXT,
                  font=("Helvetica", 11, "bold")).grid(
             row=r, column=0, padx=PAD, sticky="w"); r+=1
 
         sp(4)
 
-        tk.Label(f,
-                 text="Command to run your agent. Sentry will wrap and monitor it.",
-                 bg=BG, fg=TEXT2, font=("Helvetica", 10),
-                 wraplength=440, justify="left").grid(
-            row=r, column=0, padx=PAD, sticky="w"); r+=1
+        self._plan_label = tk.Label(f, text="Loading plan...",
+                 bg=BG, fg=TEXT3, font=("Helvetica", 10))
+        self._plan_label.grid(row=r, column=0, padx=PAD, sticky="w"); r+=1
 
         sp(8)
 
-        cmd_frame = tk.Frame(f, bg=BG3,
-                             highlightbackground=BORDER, highlightthickness=1)
-        cmd_frame.grid(row=r, column=0, padx=PAD, sticky="ew"); r+=1
-        cmd_frame.grid_columnconfigure(0, weight=1)
+        # Agent list frame
+        self._agents_frame = tk.Frame(f, bg=BG)
+        self._agents_frame.grid(row=r, column=0, padx=PAD, sticky="ew")
+        self._agents_frame.grid_columnconfigure(0, weight=1); r+=1
 
-        self.agent_cmd_var = tk.StringVar(
-            value=self.config_data.get("agent_command", "python3 agent.py"))
-        tk.Entry(cmd_frame,
-                 textvariable=self.agent_cmd_var,
-                 bg=BG3, fg=TEXT, insertbackground=TEXT,
-                 selectbackground=ACCENT, selectforeground=WHITE,
-                 relief="flat", bd=0, highlightthickness=0,
-                 font=("Courier", 12)).grid(
-            row=0, column=0, padx=16, pady=14, sticky="ew")
+        # Internal agent list: [{"name": str, "command": str}]
+        self._agent_list = self.config_data.get("agents", [
+            {"name": self.config_data.get("agent_id", "my-agent"),
+             "command": self.config_data.get("agent_command", "python3 agent.py")}
+        ])
+        self._agent_rows = []
+        self._max_agents = 1  # updated after plan fetch
+
+        self._refresh_agent_rows()
+
+        sp(10)
+
+        self._add_agent_btn = label_btn(
+            f, text="+ Add Agent",
+            command=self._add_agent_row,
+            bg=BG3, fg=TEXT2,
+            font=("Helvetica", 11),
+            padx=14, pady=8,
+        )
+        self._add_agent_btn.grid(row=r, column=0, padx=PAD, sticky="w"); r+=1
+
+        self._upgrade_lbl = tk.Label(f, text="",
+                 bg=BG, fg="#F59E0B", font=("Helvetica", 10))
+        self._upgrade_lbl.grid(row=r, column=0, padx=PAD, sticky="w"); r+=1
+
+        # Fetch plan limits in background
+        threading.Thread(target=self._fetch_plan_limits, daemon=True).start()
 
         sp(28); div(); sp(20)
 
@@ -804,6 +796,86 @@ class VaultakSentryApp(tk.Tk):
                  font=("Helvetica", 10)).grid(row=r, column=0); r+=1
 
     # ── LOGIC ─────────────────────────────────────────────────────────────────
+    def _refresh_agent_rows(self):
+        """Rebuild the agent rows UI from self._agent_list."""
+        for w in self._agents_frame.winfo_children():
+            w.destroy()
+        self._agent_rows = []
+        for i, agent in enumerate(self._agent_list):
+            self._add_agent_row_data(i, agent["name"], agent["command"])
+
+    def _add_agent_row_data(self, idx, name="", command="python3 agent.py"):
+        """Add a single agent row to the UI."""
+        row_f = tk.Frame(self._agents_frame, bg=BG2,
+                         highlightbackground=BORDER, highlightthickness=1)
+        row_f.grid(row=idx, column=0, sticky="ew", pady=4)
+        row_f.grid_columnconfigure(1, weight=1)
+
+        tk.Label(row_f, text="Name", bg=BG2, fg=TEXT2,
+                 font=("Helvetica", 11, "bold")).grid(row=0, column=0, padx=(16,8), pady=(12,4), sticky="w")
+
+        name_var = tk.StringVar(value=name)
+        tk.Entry(row_f, textvariable=name_var, bg=BG3, fg=WHITE,
+                 insertbackground=WHITE, relief="flat", bd=0,
+                 highlightthickness=0, font=("Helvetica", 12)).grid(
+            row=0, column=1, padx=(0,12), pady=(12,4), sticky="ew")
+
+        tk.Label(row_f, text="Command", bg=BG2, fg=TEXT2,
+                 font=("Helvetica", 11, "bold")).grid(row=1, column=0, padx=(16,8), pady=(4,12), sticky="w")
+
+        cmd_var = tk.StringVar(value=command)
+        tk.Entry(row_f, textvariable=cmd_var, bg=BG3, fg=WHITE,
+                 insertbackground=WHITE, relief="flat", bd=0,
+                 highlightthickness=0, font=("Courier", 12)).grid(
+            row=1, column=1, padx=(0,12), pady=(4,12), sticky="ew")
+
+        if idx > 0:
+            def remove(i=idx):
+                del self._agent_list[i]
+                self._refresh_agent_rows()
+            rm = tk.Label(row_f, text="✕", bg=BG2, fg=TEXT3,
+                          font=("Helvetica", 11), cursor="hand2", padx=8)
+            rm.grid(row=0, column=2, rowspan=2, padx=(0,8))
+            rm.bind("<Button-1>", lambda e, fn=remove: fn())
+
+        self._agent_rows.append((name_var, cmd_var))
+
+    def _add_agent_row(self):
+        """Add a new empty agent row, respecting plan limits."""
+        if len(self._agent_rows) >= self._max_agents:
+            self._upgrade_lbl.config(
+                text=f"Upgrade to add more agents. Current plan allows {self._max_agents}.")
+            return
+        self._upgrade_lbl.config(text="")
+        idx = len(self._agent_list)
+        self._agent_list.append({"name": f"agent-{idx+1}", "command": "python3 agent.py"})
+        self._add_agent_row_data(idx, f"agent-{idx+1}", "python3 agent.py")
+
+    def _fetch_plan_limits(self):
+        """Fetch plan limits from backend and update UI."""
+        api_key = self.config_data.get("api_key", "")
+        if not api_key:
+            return
+        try:
+            import urllib.request as _req, json as _json
+            request = _req.Request(
+                f"{API_BASE}/api/org/plan",
+                headers={"x-api-key": api_key},
+                method="GET"
+            )
+            resp = _req.urlopen(request, timeout=5)
+            data = _json.loads(resp.read())
+            plan      = data.get("plan", "starter")
+            max_agents = data.get("max_agents", 1)
+            self._max_agents = max_agents
+            self.after(0, lambda: self._plan_label.config(
+                text=f"Plan: {plan.upper()} — up to {max_agents} agent(s)"))
+            if len(self._agent_rows) >= max_agents:
+                self.after(0, lambda: self._upgrade_lbl.config(
+                    text=f"Agent limit reached. Upgrade to add more."))
+        except Exception:
+            self.after(0, lambda: self._plan_label.config(text="Plan: could not load"))
+
     def _toggle_show(self):
         if self.key_entry.cget("show") == "•":
             self.key_entry.config(show="")
@@ -886,14 +958,33 @@ class VaultakSentryApp(tk.Tk):
             on_action=self._on_intercepted_action,
             on_log=lambda msg: self.after(0, lambda m=msg: self._log(m)),
         )
-        cmd = self.config_data.get("agent_command", "").strip()
-        if cmd:
-            self._log(f"Wrapping: {cmd}")
-            threading.Thread(
-                target=self._engine.start,
-                args=(cmd,),
-                daemon=True
-            ).start()
+        # Launch all configured agents
+        agents = self.config_data.get("agents", [])
+        if not agents:
+            cmd = self.config_data.get("agent_command", "").strip()
+            if cmd:
+                agents = [{"name": agent_id, "command": cmd}]
+
+        self._engines = []
+        if agents:
+            for ag in agents:
+                cmd  = ag.get("command", "").strip()
+                name = ag.get("name", agent_id)
+                if not cmd:
+                    continue
+                engine = SentryEngine(
+                    api_key=api_key,
+                    agent_id=name,
+                    alert_threshold=t_alert,
+                    pause_threshold=t_pause,
+                    rollback_threshold=t_rollback,
+                    api_base=API_BASE,
+                    on_action=self._on_intercepted_action,
+                    on_log=lambda msg: self.after(0, lambda m=msg: self._log(m)),
+                )
+                self._engines.append(engine)
+                self._log(f"Wrapping [{name}]: {cmd}")
+                threading.Thread(target=engine.start, args=(cmd,), daemon=True).start()
         else:
             self._log("No agent command set. Go to Settings to configure.")
             self._log("Actions logged via SDK will still appear in dashboard.")
@@ -909,9 +1000,11 @@ class VaultakSentryApp(tk.Tk):
         if not self._stop_enabled:
             return
         self.is_monitoring = False
-        # Stop engine if running
-        if hasattr(self, "_engine") and self._engine:
-            threading.Thread(target=self._engine.stop, daemon=True).start()
+        # Stop all engines
+        if hasattr(self, "_engines") and self._engines:
+            for engine in self._engines:
+                threading.Thread(target=engine.stop, daemon=True).start()
+            self._engines = []
         self.hdr_status.config(text="Stopped", fg=RED)
         self.stat_vars["status"].set("Stopped")
         self._stop_enabled = False
@@ -955,14 +1048,26 @@ class VaultakSentryApp(tk.Tk):
         self.after(1000, self._tick_uptime)
 
     def _save_settings(self):
+        # Collect agent list from UI rows
+        agents = []
+        for name_var, cmd_var in self._agent_rows:
+            name = name_var.get().strip()
+            cmd  = cmd_var.get().strip()
+            if name and cmd:
+                agents.append({"name": name, "command": cmd})
+        if not agents:
+            messagebox.showerror("Error", "At least one agent is required.")
+            return
         cfg = {
             **self.config_data,
-            "agent_id":      self.agent_name_var.get(),
-            "agent_command": self.agent_cmd_var.get().strip(),
+            "agents":        agents,
+            "agent_id":      agents[0]["name"],
+            "agent_command": agents[0]["command"],
         }
         save_config(cfg)
         self.config_data = cfg
-        messagebox.showinfo("Saved", "Settings saved.")
+        self._agent_list = agents
+        messagebox.showinfo("Saved", f"Settings saved. {len(agents)} agent(s) configured.")
 
     def _disconnect(self):
         if messagebox.askyesno("Disconnect", "Stop monitoring and disconnect?"):
