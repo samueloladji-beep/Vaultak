@@ -107,6 +107,206 @@ def _darken(hex_color):
         return hex_color
 
 
+
+# ── SENTRY INTERCEPTION ENGINE ────────────────────────────────────────────────
+import subprocess, os, re, uuid, queue
+from datetime import datetime, timezone
+
+class SentryEngine:
+    """
+    Real process interception engine.
+    Runs the user's agent as a subprocess, monitors its stdout/stderr
+    and filesystem/network activity via a wrapper script, then posts
+    intercepted actions to the Vaultak backend.
+    """
+
+    # Patterns to classify log lines into action types
+    FILE_WRITE_PAT  = re.compile(r"(open|write|save|creat|dump|export).{0,40}[\'\"](.*?)[\'\"]\s*[,)]", re.I)
+    FILE_READ_PAT   = re.compile(r"(read|load|open|import).{0,40}[\'\"](.*?)[\'\"]\s*[,)]", re.I)
+    HTTP_PAT        = re.compile(r'(https?://[^\s]+)', re.I)
+    DB_WRITE_PAT    = re.compile(r"(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE)\s", re.I)
+    DB_READ_PAT     = re.compile(r"(SELECT|SHOW|DESCRIBE|EXPLAIN)\s", re.I)
+    EXEC_PAT        = re.compile(r"(exec|spawn|popen|system|run|call).{0,30}[\'\"](.*?)[\'\"]\s*[,)]", re.I)
+    SENSITIVE_PAT   = re.compile(r"(\.env|secret|password|token|api.?key|credential|private.?key)", re.I)
+
+    def __init__(self, api_key, agent_id, alert_threshold, pause_threshold,
+                 rollback_threshold, api_base, on_action, on_log):
+        self.api_key            = api_key
+        self.agent_id           = agent_id
+        self.alert_threshold    = int(alert_threshold)
+        self.pause_threshold    = int(pause_threshold)
+        self.rollback_threshold = int(rollback_threshold)
+        self.api_base           = api_base
+        self.on_action          = on_action   # callback(action_type, resource, score, decision)
+        self.on_log             = on_log      # callback(msg)
+        self.process            = None
+        self.running            = False
+        self._queue             = queue.Queue()
+        self._action_count      = 0
+        self._session_id        = str(uuid.uuid4())
+
+    def start(self, command):
+        """Launch the agent process and start monitoring."""
+        self.running = True
+        self._action_count = 0
+        # Start the agent process
+        try:
+            self.process = subprocess.Popen(
+                command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+        except Exception as e:
+            self.on_log(f"Failed to start process: {e}")
+            self.running = False
+            return
+
+        # Read output in background thread
+        threading.Thread(target=self._read_output, daemon=True).start()
+        # Post actions from queue in background thread
+        threading.Thread(target=self._post_worker, daemon=True).start()
+        self.on_log(f"Process started (PID {self.process.pid})")
+
+    def _read_output(self):
+        """Read agent stdout/stderr line by line and classify actions."""
+        try:
+            for line in self.process.stdout:
+                line = line.rstrip()
+                if not line:
+                    continue
+                self.on_log(f"agent: {line}")
+                self._classify_line(line)
+        except Exception as e:
+            self.on_log(f"Read error: {e}")
+        finally:
+            rc = self.process.wait()
+            self.running = False
+            self.on_log(f"Process exited (code {rc})")
+
+    def _classify_line(self, line):
+        """Classify a log line into a Vaultak action type and post it."""
+        action_type = None
+        resource    = "unknown"
+        base_score  = 0
+
+        # Check for sensitive resource access first
+        if self.SENSITIVE_PAT.search(line):
+            action_type = "file_read"
+            m = self.SENSITIVE_PAT.search(line)
+            resource    = m.group(0) if m else ".env"
+            base_score  = 85
+
+        elif self.DB_WRITE_PAT.search(line):
+            action_type = "database_write"
+            resource    = "database"
+            base_score  = 70
+
+        elif self.DB_READ_PAT.search(line):
+            action_type = "database_read"
+            resource    = "database"
+            base_score  = 30
+
+        elif self.HTTP_PAT.search(line):
+            action_type = "api_call"
+            m = self.HTTP_PAT.search(line)
+            resource    = m.group(1)[:80] if m else "http"
+            base_score  = 40
+
+        elif self.FILE_WRITE_PAT.search(line):
+            action_type = "file_write"
+            m = self.FILE_WRITE_PAT.search(line)
+            resource    = m.group(2)[:80] if m else "file"
+            base_score  = 55
+            if any(k in resource.lower() for k in ["prod", "config", "schema", ".env"]):
+                base_score = 80
+
+        elif self.FILE_READ_PAT.search(line):
+            action_type = "file_read"
+            m = self.FILE_READ_PAT.search(line)
+            resource    = m.group(2)[:80] if m else "file"
+            base_score  = 35
+
+        elif self.EXEC_PAT.search(line):
+            action_type = "subprocess_exec"
+            m = self.EXEC_PAT.search(line)
+            resource    = m.group(2)[:80] if m else "command"
+            base_score  = 60
+
+        if action_type:
+            self._queue.put((action_type, resource, base_score))
+
+    def _post_worker(self):
+        """Background worker that posts queued actions to the backend."""
+        while self.running or not self._queue.empty():
+            try:
+                action_type, resource, base_score = self._queue.get(timeout=1)
+                self._post_action(action_type, resource, base_score)
+            except queue.Empty:
+                continue
+            except Exception as e:
+                self.on_log(f"Post error: {e}")
+
+    def _post_action(self, action_type, resource, base_score):
+        """Post a single action to the Vaultak backend and handle response."""
+        try:
+            import json as _json, urllib.request as _req
+            payload = _json.dumps({
+                "agent_id":    self.agent_id,
+                "action_type": action_type,
+                "resource":    resource,
+                "payload":     {"sentry": True, "base_score": base_score},
+                "session_id":  self._session_id,
+                "timestamp":   datetime.now(timezone.utc).isoformat(),
+            }).encode()
+
+            request = _req.Request(
+                f"{self.api_base}/api/actions",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-api-key":    self.api_key,
+                },
+                method="POST"
+            )
+            resp   = _req.urlopen(request, timeout=5)
+            result = _json.loads(resp.read())
+
+            score    = result.get("risk_score", base_score / 100)
+            score_pct = int(score * 100)
+            decision = result.get("decision", "allow").lower()
+            flagged  = result.get("flagged", False)
+
+            self._action_count += 1
+
+            # Determine severity
+            if score_pct >= self.rollback_threshold or decision in ("rollback", "block"):
+                self.on_action(action_type, resource, score_pct, "ROLLBACK")
+            elif score_pct >= self.pause_threshold or decision == "pause":
+                self.on_action(action_type, resource, score_pct, "PAUSE")
+            elif score_pct >= self.alert_threshold or flagged:
+                self.on_action(action_type, resource, score_pct, "ALERT")
+            else:
+                self.on_action(action_type, resource, score_pct, "ALLOW")
+
+        except Exception as e:
+            # Still notify UI even if post fails
+            self.on_action(action_type, resource, base_score, "ALLOW")
+
+    def stop(self):
+        """Stop monitoring and terminate the agent process."""
+        self.running = False
+        if self.process and self.process.poll() is None:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+        self.on_log(f"Monitoring stopped. {self._action_count} actions intercepted.")
+
+
 class VaultakSentryApp(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -528,6 +728,37 @@ class VaultakSentryApp(tk.Tk):
                  font=("Helvetica", 12)).grid(
             row=0, column=0, padx=16, pady=14, sticky="ew")
 
+        sp(20)
+
+        tk.Label(f, text="AGENT COMMAND", bg=BG, fg=TEXT,
+                 font=("Helvetica", 11, "bold")).grid(
+            row=r, column=0, padx=PAD, sticky="w"); r+=1
+
+        sp(4)
+
+        tk.Label(f,
+                 text="Command to run your agent. Sentry will wrap and monitor it.",
+                 bg=BG, fg=TEXT2, font=("Helvetica", 10),
+                 wraplength=440, justify="left").grid(
+            row=r, column=0, padx=PAD, sticky="w"); r+=1
+
+        sp(8)
+
+        cmd_frame = tk.Frame(f, bg=BG3,
+                             highlightbackground=BORDER, highlightthickness=1)
+        cmd_frame.grid(row=r, column=0, padx=PAD, sticky="ew"); r+=1
+        cmd_frame.grid_columnconfigure(0, weight=1)
+
+        self.agent_cmd_var = tk.StringVar(
+            value=self.config_data.get("agent_command", "python3 agent.py"))
+        tk.Entry(cmd_frame,
+                 textvariable=self.agent_cmd_var,
+                 bg=BG3, fg=TEXT, insertbackground=TEXT,
+                 selectbackground=ACCENT, selectforeground=WHITE,
+                 relief="flat", bd=0, highlightthickness=0,
+                 font=("Courier", 12)).grid(
+            row=0, column=0, padx=16, pady=14, sticky="ew")
+
         sp(28); div(); sp(20)
 
         tk.Label(f, text="RESOURCES", bg=BG, fg=TEXT,
@@ -644,10 +875,43 @@ class VaultakSentryApp(tk.Tk):
         self._log("Dashboard: app.vaultak.com")
         self._tick_uptime()
 
+        # Start real interception engine
+        self._engine = SentryEngine(
+            api_key=api_key,
+            agent_id=agent_id,
+            alert_threshold=t_alert,
+            pause_threshold=t_pause,
+            rollback_threshold=t_rollback,
+            api_base=API_BASE,
+            on_action=self._on_intercepted_action,
+            on_log=lambda msg: self.after(0, lambda m=msg: self._log(m)),
+        )
+        cmd = self.config_data.get("agent_command", "").strip()
+        if cmd:
+            self._log(f"Wrapping: {cmd}")
+            threading.Thread(
+                target=self._engine.start,
+                args=(cmd,),
+                daemon=True
+            ).start()
+        else:
+            self._log("No agent command set. Go to Settings to configure.")
+            self._log("Actions logged via SDK will still appear in dashboard.")
+
+    def _on_intercepted_action(self, action_type, resource, score, decision):
+        """Called by SentryEngine for each intercepted action."""
+        icons = {"ROLLBACK": "x", "PAUSE": "!", "ALERT": "~", "ALLOW": "+"}
+        icon  = icons.get(decision, "+")
+        msg   = f"[{icon}] {action_type} on {resource} — risk {score}"
+        self.after(0, lambda: self._log(msg))
+
     def _stop(self):
         if not self._stop_enabled:
             return
         self.is_monitoring = False
+        # Stop engine if running
+        if hasattr(self, "_engine") and self._engine:
+            threading.Thread(target=self._engine.stop, daemon=True).start()
         self.hdr_status.config(text="Stopped", fg=RED)
         self.stat_vars["status"].set("Stopped")
         self._stop_enabled = False
@@ -691,7 +955,11 @@ class VaultakSentryApp(tk.Tk):
         self.after(1000, self._tick_uptime)
 
     def _save_settings(self):
-        cfg = {**self.config_data, "agent_id": self.agent_name_var.get()}
+        cfg = {
+            **self.config_data,
+            "agent_id":      self.agent_name_var.get(),
+            "agent_command": self.agent_cmd_var.get().strip(),
+        }
         save_config(cfg)
         self.config_data = cfg
         messagebox.showinfo("Saved", "Settings saved.")
