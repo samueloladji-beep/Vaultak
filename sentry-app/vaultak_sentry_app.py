@@ -40,7 +40,67 @@ GREEN   = "#4ade80"
 RED     = "#ff6b6b"
 WHITE   = "#ffffff"
 
+def load_vaultak_yaml():
+    """Look for vaultak.yaml in current directory and parent directories."""
+    import os
+    search_dirs = [Path.cwd()] + list(Path.cwd().parents)[:3]
+    for d in search_dirs:
+        yaml_path = d / "vaultak.yaml"
+        if yaml_path.exists():
+            try:
+                text = yaml_path.read_text()
+                cfg = {}
+                # Simple YAML parser for our known format
+                current_key = None
+                agents = []
+                current_agent = {}
+                thresholds = {}
+                for line in text.splitlines():
+                    stripped = line.strip()
+                    if not stripped or stripped.startswith("#"):
+                        continue
+                    if stripped.startswith("api_key:"):
+                        cfg["api_key"] = stripped.split(":", 1)[1].strip().strip("'\"")
+                    elif stripped.startswith("- name:"):
+                        if current_agent:
+                            agents.append(current_agent)
+                        current_agent = {"name": stripped.split(":", 1)[1].strip().strip("'\"")}
+                    elif stripped.startswith("command:") and current_agent is not None:
+                        current_agent["command"] = stripped.split(":", 1)[1].strip().strip("'\"")
+                    elif stripped.startswith("alert:"):
+                        thresholds["alert"] = stripped.split(":", 1)[1].strip()
+                    elif stripped.startswith("pause:"):
+                        thresholds["pause"] = stripped.split(":", 1)[1].strip()
+                    elif stripped.startswith("rollback:"):
+                        thresholds["rollback"] = stripped.split(":", 1)[1].strip()
+                if current_agent:
+                    agents.append(current_agent)
+                if agents:
+                    cfg["agents"] = agents
+                    cfg["agent_id"] = agents[0]["name"]
+                    cfg["agent_command"] = agents[0]["command"]
+                if thresholds:
+                    cfg["threshold_alert"] = thresholds.get("alert", "30")
+                    cfg["threshold_pause"] = thresholds.get("pause", "60")
+                    cfg["threshold_rollback"] = thresholds.get("rollback", "85")
+                if cfg:
+                    cfg["_from_yaml"] = str(yaml_path)
+                    return cfg
+            except Exception:
+                pass
+    return None
+
 def load_config():
+    # First check for vaultak.yaml
+    yaml_cfg = load_vaultak_yaml()
+    if yaml_cfg:
+        # Merge with saved config (yaml takes precedence for api_key and agents)
+        saved = {}
+        if CONFIG_FILE.exists():
+            try: saved = json.loads(CONFIG_FILE.read_text())
+            except: pass
+        saved.update(yaml_cfg)
+        return saved
     if CONFIG_FILE.exists():
         try: return json.loads(CONFIG_FILE.read_text())
         except: pass
@@ -909,7 +969,7 @@ class VaultakSentryApp(tk.Tk):
             if not valid:
                 self.after(0, lambda: self._fail(msg))
                 return
-            agent_id = self.agent_name_var.get() or "my-agent"
+            agent_id = self.config_data.get("agent_id", "my-agent")
             thresholds = {f"threshold_{k}": v.get()
                           for k, v in self.threshold_vars.items()}
             cfg = {**self.config_data,
@@ -941,6 +1001,10 @@ class VaultakSentryApp(tk.Tk):
         t_rollback = self.config_data.get("threshold_rollback", "85")
         self.stat_vars["mode"].set(f"A{t_alert}/P{t_pause}/R{t_rollback}")
         self._show_tab("monitor")
+        # Notify if config loaded from vaultak.yaml
+        yaml_source = self.config_data.get("_from_yaml", "")
+        if yaml_source:
+            self._log(f"Config loaded from: {yaml_source}")
         self._log("Vaultak Sentry started")
         self._log(f"Agent: {agent_id}")
         self._log(f"Alert >={t_alert}  |  Pause >={t_pause}  |  Rollback >={t_rollback}")
