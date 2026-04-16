@@ -1594,6 +1594,10 @@ def pricing_page():
 @app.get("/blog/how-to-score-your-ai-agent-security-risk")
 def blog_agent_risk_score():
     return FileResponse("blog_how-to-score-your-ai-agent-security-risk.html")
+
+@app.get("/blog/how-to-monitor-ai-agents-in-production")
+def blog_monitor_agents():
+    return FileResponse("blog_how-to-monitor-ai-agents-in-production.html")
 @app.get("/sitemap.xml")
 def sitemap():
     from fastapi.responses import Response

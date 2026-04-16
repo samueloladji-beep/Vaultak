@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <title>How to Monitor AI Agents in Production — Vaultak Blog</title>
+  <meta name="description" content="Most teams find out their AI agent misbehaved from a support ticket, not a dashboard. Here is how to actually monitor what your agent is doing in production."/>
+  <meta name="keywords" content="monitor AI agents production, AI agent monitoring, LangChain monitoring, CrewAI production, AI agent observability, LLM agent logging, runtime AI security"/>
+  <meta property="og:title" content="How to Monitor AI Agents in Production — Vaultak"/>
+  <meta property="og:description" content="Most teams find out their AI agent misbehaved from a support ticket, not a dashboard. Here is how to actually monitor what your agent is doing in production."/>
+  <meta property="og:type" content="article"/>
+  <meta property="og:url" content="https://vaultak.com/blog/how-to-monitor-ai-agents-in-production"/>
+  <meta name="robots" content="index, follow"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0d0b12;color:#ede9e4;font-family:'Inter',sans-serif;line-height:1.7;min-height:100vh}
+    .container{max-width:720px;margin:0 auto;padding:48px 24px 80px}
+    .brand{font-size:15px;font-weight:700;letter-spacing:.08em;color:#fff;margin-bottom:8px}
+    .nav{font-size:12px;color:#44414f;font-family:'JetBrains Mono',monospace;margin-bottom:48px}
+    .nav a{color:#8a8695;text-decoration:none}
+    .nav a:hover{color:#fff}
+    .post-tag{display:inline-block;background:rgba(99,88,255,0.12);border:1px solid rgba(99,88,255,0.2);color:#a89fe0;font-size:10px;font-family:'JetBrains Mono',monospace;padding:3px 10px;border-radius:20px;margin-bottom:16px;letter-spacing:.08em;text-transform:uppercase}
+    h1{font-size:36px;font-weight:700;color:#fff;letter-spacing:-.5px;line-height:1.2;margin-bottom:16px}
+    .meta{font-size:12px;color:#44414f;font-family:'JetBrains Mono',monospace;margin-bottom:40px}
+    h2{font-size:22px;font-weight:600;color:#fff;margin:40px 0 14px;letter-spacing:-.2px}
+    h3{font-size:17px;font-weight:600;color:#ede9e4;margin:28px 0 10px}
+    p{font-size:15px;color:#8a8695;line-height:1.85;margin-bottom:18px}
+    ul,ol{padding-left:20px;margin-bottom:18px}
+    li{font-size:15px;color:#8a8695;line-height:1.85;margin-bottom:8px}
+    strong{color:#ede9e4;font-weight:500}
+    code{font-family:'JetBrains Mono',monospace;font-size:13px;background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:4px;color:#a89fe0}
+    pre{background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px 24px;margin:24px 0;overflow-x:auto}
+    pre code{background:none;padding:0;font-size:13px;line-height:1.8;color:#a89fe0}
+    blockquote{border-left:3px solid rgba(99,88,255,0.5);padding-left:20px;margin:24px 0;color:#6b6880;font-style:italic}
+    table{width:100%;border-collapse:collapse;margin:24px 0}
+    th{text-align:left;font-size:11px;font-family:'JetBrains Mono',monospace;letter-spacing:.1em;color:#44414f;text-transform:uppercase;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.08)}
+    td{font-size:14px;color:#8a8695;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.05)}
+    .cta{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:32px;margin:48px 0;text-align:center}
+    .cta-title{font-size:20px;font-weight:600;color:#fff;margin-bottom:8px}
+    .cta-desc{font-size:14px;color:#8a8695;margin-bottom:20px}
+    .cta-btn{display:inline-block;background:#fff;color:#000;padding:11px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px}
+    .cta-btn:hover{background:#ede9e4}
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="brand">Vaultak</div>
+  <div class="nav"><a href="https://vaultak.com">Home</a> &middot; <a href="https://vaultak.com/blog">Blog</a> &middot; How to Monitor AI Agents in Production</div>
+
+  <div class="post-tag">Engineering</div>
+  <h1>How to Monitor AI Agents in Production</h1>
+  <div class="meta">April 15, 2026 &middot; 8 min read &middot; By Samuel Oladji</div>
+
+  <p>Here is a pattern that plays out more often than it should. A team ships an AI agent. It runs fine for a few days. Then something goes sideways — an unusual sequence of actions, a record that should not have been touched, an email that should not have been sent. The team finds out not from their monitoring stack, but from a customer complaint.</p>
+
+  <p>The post-mortem usually uncovers the same gap: the agent had logging, but nobody was watching the right things. They could see that the agent ran. They could not see what it actually did, or whether what it did was within acceptable bounds.</p>
+
+  <p>This is the difference between logging and monitoring. Logging tells you what happened. Monitoring tells you when something that happened should not have.</p>
+
+  <p>This post is about how to build the second thing for AI agents — practically, without a six-month observability project.</p>
+
+  <h2>Why standard logging is not enough</h2>
+
+  <p>If you are using LangChain, CrewAI, or the OpenAI Assistants API, you probably already have some form of logging set up. You can see token counts, latencies, which tools were called. That is useful for debugging. It is not sufficient for production safety.</p>
+
+  <p>The problem is that standard logging is retrospective. You look at it after something goes wrong. What you actually need for an agent running in production is something closer to what a circuit breaker does in electrical systems: something that catches a problem at the moment it is happening, before the damage compounds.</p>
+
+  <p>An agent that runs a bulk database update affecting 10,000 records will show up fine in your latency graphs. The action completed successfully. From a logging perspective, everything looks normal. From a business perspective, you just lost a week of work.</p>
+
+  <h2>What you actually need to monitor</h2>
+
+  <p>There are five things worth tracking for any agent running in production. Not all of them are obvious.</p>
+
+  <h3>1. Action type and target</h3>
+
+  <p>Every action your agent takes should be categorized. Is it a read or a write? Is it touching a production system or a sandboxed one? Is it sending an outbound message? The categorization sounds basic but most teams skip it, which means they have no way to set thresholds or alerts without going back through raw logs.</p>
+
+  <h3>2. Blast radius per action</h3>
+
+  <p>This is the one most teams miss entirely. Blast radius measures how many records or systems a single action affects. A write operation that touches one row is very different from a write operation that touches every row matching a condition. Both look like "write operations" in your logs. Only one of them is a potential disaster.</p>
+
+  <p>Before any bulk operation executes, you want a count. If that count exceeds a threshold you have defined, the action should either be blocked or require explicit approval.</p>
+
+  <h3>3. Policy violations</h3>
+
+  <p>Not every agent action that completes successfully is an action that should have been allowed. You need a layer that checks each action against a set of rules before it runs — not logs it afterward. Rules like: no deletes on production tables, no outbound emails to more than 50 recipients, no API calls to domains outside an approved list.</p>
+
+  <p>Without this layer, your monitoring is purely observational. You can see what happened but you cannot prevent it from happening again.</p>
+
+  <h3>4. Behavioral drift</h3>
+
+  <p>Agents that run continuously develop patterns. A customer service agent that normally processes 20 to 30 tickets per hour and suddenly starts processing 400 is exhibiting behavioral drift. It might be fine. It might be a runaway loop. Without a baseline and a threshold, you have no way to tell the difference until the damage is done.</p>
+
+  <h3>5. State before high-risk actions</h3>
+
+  <p>This is less about monitoring and more about recovery, but they belong together. Before any action that carries meaningful risk, snapshot the relevant state. If the action turns out to have been a mistake, you want a recovery path that takes minutes, not days.</p>
+
+  <h2>A practical monitoring setup</h2>
+
+  <p>Here is what a minimal but effective production monitoring setup looks like for a LangChain or CrewAI agent.</p>
+
+  <p>The first layer is instrumentation at the action level. Every tool call your agent makes should pass through a checkpoint that records the action type, the target resource, the payload size, and the timestamp.</p>
+
+<pre><code>from vaultak import VaultakClient
+
+client = VaultakClient(api_key="your_api_key")
+
+# Pre-execution check on every agent action
+result = client.check(
+    action="update",
+    resource="users.accounts",
+    payload={"record_count": len(affected_records)}
+)
+
+if result.blocked:
+    # Action violates a defined policy
+    raise PolicyViolationError(result.reason)
+
+# Proceed with action
+update_records(affected_records)</code></pre>
+
+  <p>The second layer is policy definition. Start with three policies and expand from there:</p>
+
+<pre><code># Block bulk operations above a safe threshold
+client.policies.create({
+    "name": "blast_radius_limit",
+    "rule": "block",
+    "condition": {
+        "action": "update",
+        "record_count_exceeds": 25
+    }
+})
+
+# Block deletes on production resources entirely
+client.policies.create({
+    "name": "no_production_deletes",
+    "rule": "block",
+    "condition": {
+        "action": "delete",
+        "resource_pattern": "production.*"
+    }
+})
+
+# Alert on high-volume outbound email
+client.policies.create({
+    "name": "email_volume_alert",
+    "rule": "alert",
+    "condition": {
+        "action": "send_email",
+        "recipient_count_exceeds": 50
+    }
+})</code></pre>
+
+  <p>The third layer is rollback. Before any action that touches more than one record, snapshot the affected state.</p>
+
+<pre><code># Snapshot before a high-risk operation
+snapshot_id = client.snapshot(
+    resource="users.accounts",
+    record_ids=[r.id for r in affected_records]
+)
+
+# If something goes wrong after execution
+client.rollback(snapshot_id)</code></pre>
+
+  <p>These three layers together give you meaningful production monitoring: you know what the agent is doing, you have defined what it is not allowed to do, and you have a recovery path if something slips through.</p>
+
+  <h2>Where to send the signals</h2>
+
+  <p>The monitoring data from your agent should flow into whatever tools your team already uses. Setting up a separate dashboard that nobody checks is worse than nothing — it creates false confidence.</p>
+
+  <p>If your team lives in Slack, route agent alerts to a dedicated channel. If you use PagerDuty for on-call, wire critical policy violations into your existing rotation. If you have Splunk or Datadog, the agent's action stream should be another data source in your existing SIEM setup, not a separate tool.</p>
+
+  <p>The goal is to make agent monitoring as native to your existing workflow as application performance monitoring. It should not require anyone to open a new tab to find out whether the agent behaved appropriately in the last hour.</p>
+
+  <h2>The monitoring gap most teams discover too late</h2>
+
+  <p>The thing that surprises most teams when they first instrument an agent properly is how much was happening that they had no visibility into. Not because the agent was misbehaving — often it was not. But the actions it was taking, the data it was touching, the volume it was operating at, were all invisible until they started looking.</p>
+
+  <p>Running an agent in production without action-level monitoring is roughly equivalent to running a web application with no error tracking. You will find out about problems eventually. You will just find out the hard way.</p>
+
+  <p>The good news is that the instrumentation is not a large project. Five lines of code and a handful of policy definitions get you most of the way there. The hard part is not the implementation — it is deciding to do it before something goes wrong rather than after.</p>
+
+  <div class="cta">
+    <div class="cta-title">Add monitoring to your agent in 5 minutes</div>
+    <div class="cta-desc">Real-time action monitoring, policy enforcement, and rollback. Free tier available.</div>
+    <a href="https://app.vaultak.com" class="cta-btn">Get started free &rarr;</a>
+  </div>
+
+</div>
+</body>
+</html>
