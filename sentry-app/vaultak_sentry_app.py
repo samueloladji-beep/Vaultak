@@ -384,7 +384,7 @@ class VaultakSentryApp(tk.Tk):
         self.title(APP_NAME)
         self.configure(bg=BG)
         self.resizable(False, False)
-        w, h = 520, 720
+        import platform; w, h = 520, (820 if platform.system() == "Windows" else 720)
         sw = self.winfo_screenwidth()
         sh = self.winfo_screenheight()
         self.geometry(f"{w}x{h}+{(sw-w)//2}+{(sh-h)//2}")
@@ -484,8 +484,27 @@ class VaultakSentryApp(tk.Tk):
         outer = self.tab_frames["setup"]
         outer.grid_rowconfigure(0, weight=1)
         outer.grid_columnconfigure(0, weight=1)
-        f = tk.Frame(outer, bg=BG)
-        f.grid(row=0, column=0, sticky="nsew")
+
+        canvas = tk.Canvas(outer, bg=BG, highlightthickness=0, bd=0)
+        scrollbar = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+
+        f = tk.Frame(canvas, bg=BG)
+        canvas_window = canvas.create_window((0, 0), window=f, anchor="nw")
+
+        def _on_frame_configure(e):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        def _on_canvas_configure(e):
+            canvas.itemconfig(canvas_window, width=e.width)
+        def _on_mousewheel(e):
+            canvas.yview_scroll(int(-1*(e.delta/120)), "units")
+
+        f.bind("<Configure>", _on_frame_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
         f.grid_columnconfigure(0, weight=1)
         PAD = 28
         r = 0
