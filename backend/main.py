@@ -2135,6 +2135,11 @@ def serve_blog_how_to_roll_back_ai_agent_damage():
     p = os.path.join(os.path.dirname(__file__), "blog_how-to-roll-back-ai-agent-damage.html")
     return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
 
+@app.get("/blog/how-to-secure-langchain-agents", response_class=HTMLResponse)
+def serve_blog_how_to_secure_langchain_agents():
+    p = os.path.join(os.path.dirname(__file__), "blog_how-to-secure-langchain-agents.html")
+    return HTMLResponse(content=open(p).read()) if os.path.exists(p) else HTMLResponse("Not found", 404)
+
 @app.get("/blog/how-to-secure-autogpt-agents", response_class=HTMLResponse)
 def serve_blog_how_to_secure_autogpt_agents():
     p = os.path.join(os.path.dirname(__file__), "blog_how-to-secure-autogpt-agents.html")
