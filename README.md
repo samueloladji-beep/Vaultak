@@ -160,8 +160,9 @@ Every agent event, risk score, policy trigger, and rollback is visible in your V
 |---|---|---|
 | Starter | Free | Individual developers |
 | Pro | $49/mo | Small teams |
-| Business | $199/mo | Growing engineering orgs |
-| Enterprise | Custom | Large-scale deployments |
+| Team | $99/mo | Engineering teams |
+| Business | $299/mo | Growing engineering orgs |
+| Enterprise | Custom from $999/mo | Large-scale deployments |
 
 [Start free](https://vaultak.com) — no credit card required.
 
