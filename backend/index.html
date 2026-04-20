@@ -1357,24 +1357,130 @@ document.addEventListener('DOMContentLoaded', function() {
 {"@type":"Question","name":"Is there a free way to check my agent security risk?","acceptedAnswer":{"@type":"Answer","text":"Yes. The free Vaultak AI Agent Risk Scanner at vaultak.com/scan lets you describe your agent and get a 0-100 security score across all five risk dimensions instantly. No account or credit card required."}}
 ]}
 </script>
+<style>
+.faq-item { border-top: 1px solid rgba(255,255,255,0.06); }
+.faq-item:last-child { border-bottom: 1px solid rgba(255,255,255,0.06); }
+.faq-question {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 22px 0; cursor: pointer; user-select: none;
+  font-size: 16px; font-weight: 600; color: #fff; gap: 16px;
+}
+.faq-question:hover { color: #ede9e4; }
+.faq-icon {
+  width: 20px; height: 20px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #44414f; transition: transform 0.25s ease, color 0.2s;
+}
+.faq-item.open .faq-icon { transform: rotate(45deg); color: #a89fe0; }
+.faq-answer {
+  font-size: 14px; color: #8a8695; line-height: 1.8;
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.35s ease, padding 0.25s ease;
+  padding-bottom: 0;
+}
+.faq-item.open .faq-answer { max-height: 400px; padding-bottom: 22px; }
+</style>
 <div style="text-align:center;margin-bottom:48px;">
   <div style="font-size:11px;font-family:monospace;letter-spacing:.12em;color:#44414f;margin-bottom:12px;">FAQ</div>
   <h2 style="font-size:32px;font-weight:700;color:#fff;letter-spacing:-.5px;margin:0;">Common questions</h2>
 </div>
-<div style="display:flex;flex-direction:column;gap:0;">
-<div style="border-top:1px solid rgba(255,255,255,0.06);padding:24px 0;"><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:10px;">How does Vaultak monitor AI agents without using AI itself?</div><div style="font-size:14px;color:#8a8695;line-height:1.8;">Vaultak monitors at the action layer, not the reasoning layer. Every time an agent attempts an action — a database query, file write, or API call — it passes through Vaultak before executing. Vaultak scores it across five dimensions using deterministic logic and checks it against your policy rules. No AI or machine learning required.</div></div>
-<div style="border-top:1px solid rgba(255,255,255,0.06);padding:24px 0;"><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:10px;">Where are policies written — in the agent or in Vaultak?</div><div style="font-size:14px;color:#8a8695;line-height:1.8;">Policies are written in Vaultak, not in the agent code. Developers define rules in the Vaultak dashboard or SDK. The agent code does not need to know the rules exist. This means you can tighten or change security policies without touching your agent code at all.</div></div>
-<div style="border-top:1px solid rgba(255,255,255,0.06);padding:24px 0;"><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:10px;">Can one agent have multiple policies?</div><div style="font-size:14px;color:#8a8695;line-height:1.8;">Yes. A single agent can have unlimited policies applied simultaneously — blocking deletes on production, restricting credential access, capping bulk operations, and requiring human approval for sensitive actions, all at once. When multiple policies match the same action, the lowest priority number wins.</div></div>
-<div style="border-top:1px solid rgba(255,255,255,0.06);padding:24px 0;"><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:10px;">How does Vaultak know when to block an action?</div><div style="font-size:14px;color:#8a8695;line-height:1.8;">Vaultak intercepts every action before it executes and checks it against your defined policies. If the action matches a deny rule — for example, a delete on a production resource — it is blocked instantly before reaching the target system. The agent receives a blocked-by-policy response instead.</div></div>
-<div style="border-top:1px solid rgba(255,255,255,0.06);padding:24px 0;"><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:10px;">How does Vaultak decide when to roll back?</div><div style="font-size:14px;color:#8a8695;line-height:1.8;">Before any high-risk action, Vaultak takes a snapshot of the relevant state. If the action causes damage, the developer restores from that snapshot instantly via dashboard or API. Rollback can also trigger automatically via policy rules when a risk score threshold is exceeded.</div></div>
-<div style="border-top:1px solid rgba(255,255,255,0.06);padding:24px 0;"><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:10px;">How does Vaultak detect unusual agent behavior without AI?</div><div style="font-size:14px;color:#8a8695;line-height:1.8;">Vaultak records a baseline of what an agent normally does — which tools it calls, how frequently, on which resources. If the agent later takes actions outside that established pattern, the deviation score increases. This is pattern matching against a stored baseline, similar to how a bank detects unusual transactions.</div></div>
-<div style="border-top:1px solid rgba(255,255,255,0.06);padding:24px 0;"><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:10px;">How does Vaultak tell multiple agents apart?</div><div style="font-size:14px;color:#8a8695;line-height:1.8;">Each agent is assigned a unique ID when initialized with Vaultak. Policies, audit logs, risk scores, and rollback snapshots are all scoped to that agent ID. In a multi-agent system, each agent has its own independent policy set and behavioral baseline.</div></div>
-<div style="border-top:1px solid rgba(255,255,255,0.06);padding:24px 0;"><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:10px;">Does Vaultak work with LangChain, CrewAI, and other frameworks?</div><div style="font-size:14px;color:#8a8695;line-height:1.8;">Yes. Vaultak works at the action layer, not the framework layer, so it is compatible with LangChain, CrewAI, LangGraph, AutoGPT, OpenAI Assistants, and any custom agent framework. These are third-party frameworks developers use to build agents — Vaultak is added on top to secure them.</div></div>
-<div style="border-top:1px solid rgba(255,255,255,0.06);padding:24px 0;"><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:10px;">What is CrewAI and is it part of Vaultak?</div><div style="font-size:14px;color:#8a8695;line-height:1.8;">CrewAI is a separate open-source framework for building multi-agent systems — it has nothing to do with Vaultak. Developers choose CrewAI to build their agents and then add Vaultak on top to secure them. The two products are completely independent.</div></div>
-<div style="border-top:1px solid rgba(255,255,255,0.06);padding:24px 0;"><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:10px;">Does Vaultak require changes to my agent code?</div><div style="font-size:14px;color:#8a8695;line-height:1.8;">Minimal changes only. You add five lines to wrap your agent with vt.monitor() and connect it to Vaultak. All policy management, monitoring, and enforcement happens in Vaultak independently of your agent code.</div></div>
-<div style="border-top:1px solid rgba(255,255,255,0.06);padding:24px 0;"><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:10px;">How does Vaultak know what is right or wrong for my specific agent?</div><div style="font-size:14px;color:#8a8695;line-height:1.8;">Vaultak does not make judgment calls about intent. It enforces the rules you define. You decide what is allowed and what is not — Vaultak ensures those rules are applied to every action without exception. Think of it like a firewall: it checks every request against your rules without needing to understand what the application is trying to do.</div></div>
-<div style="border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);padding:24px 0;"><div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:10px;">Is there a free way to check my agent's security risk?</div><div style="font-size:14px;color:#8a8695;line-height:1.8;">Yes. The free Vaultak AI Agent Risk Scanner at <a href="https://vaultak.com/scan" style="color:#a89fe0;text-decoration:none;">vaultak.com/scan</a> lets you describe your agent and get a 0-100 security score across all five risk dimensions instantly. No account or credit card required.</div></div>
+<div style="text-align:center;margin-bottom:48px;">
+  <h2 style="font-size:32px;font-weight:700;color:#fff;letter-spacing:-.5px;margin:0;">Common questions</h2>
 </div>
+<div>
+<div class="faq-item">
+  <div class="faq-question" onclick="toggleFaq(this)">
+    <span>How does Vaultak monitor AI agents without using AI itself?</span>
+    <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+  </div>
+  <div class="faq-answer">It works at the action layer, not the reasoning layer. Every time your agent tries to do something — a database query, a file write, an API call — that request passes through Vaultak first. Vaultak scores it across five dimensions using deterministic rules and checks it against your policies. No machine learning involved.</div>
+</div>
+<div class="faq-item">
+  <div class="faq-question" onclick="toggleFaq(this)">
+    <span>Where do I write policies — in my agent code or in Vaultak?</span>
+    <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+  </div>
+  <div class="faq-answer">In Vaultak. Your agent code doesn't need to know the rules exist. You define everything in the dashboard or SDK, and Vaultak enforces it at runtime. That means you can update or tighten a policy without touching a single line of agent code.</div>
+</div>
+<div class="faq-item">
+  <div class="faq-question" onclick="toggleFaq(this)">
+    <span>Can one agent have multiple policies running at once?</span>
+    <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+  </div>
+  <div class="faq-answer">Yes, and there's no limit. You could block production deletes, restrict credential access, cap bulk operations, and require human approval for sensitive actions — all on the same agent, all enforced simultaneously. If multiple policies match the same action, the one with the lowest priority number takes effect.</div>
+</div>
+<div class="faq-item">
+  <div class="faq-question" onclick="toggleFaq(this)">
+    <span>How does Vaultak know when to block something?</span>
+    <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+  </div>
+  <div class="faq-answer">Every action gets intercepted before it reaches the target system. Vaultak checks it against your policies in real time. If it matches a block rule — say, a delete on anything in production — it's stopped right there. The agent gets a blocked response and the action never executes.</div>
+</div>
+<div class="faq-item">
+  <div class="faq-question" onclick="toggleFaq(this)">
+    <span>How does rollback actually work?</span>
+    <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+  </div>
+  <div class="faq-answer">Before any high-risk action runs, Vaultak captures a snapshot of the relevant state. If something goes wrong, you restore from that snapshot instantly via the dashboard or API. You can also set rollback to trigger automatically when a risk score crosses a threshold you define.</div>
+</div>
+<div class="faq-item">
+  <div class="faq-question" onclick="toggleFaq(this)">
+    <span>How does Vaultak spot unusual behavior without AI?</span>
+    <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+  </div>
+  <div class="faq-answer">It builds a baseline of what your agent normally does — which actions it takes, how often, on which resources. When the agent starts doing things outside that pattern, the deviation score goes up. It's the same idea as how a bank flags an unusual transaction — not AI, just pattern matching against a known baseline.</div>
+</div>
+<div class="faq-item">
+  <div class="faq-question" onclick="toggleFaq(this)">
+    <span>How does Vaultak keep multiple agents separate?</span>
+    <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+  </div>
+  <div class="faq-answer">Every agent gets a unique ID when you initialize it with Vaultak. Policies, audit logs, risk scores, and rollback snapshots are all tied to that ID. Each agent in a multi-agent system has its own independent policy set and behavioral baseline — they don't interfere with each other.</div>
+</div>
+<div class="faq-item">
+  <div class="faq-question" onclick="toggleFaq(this)">
+    <span>Does Vaultak work with LangChain, CrewAI, and similar frameworks?</span>
+    <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+  </div>
+  <div class="faq-answer">Yes. Vaultak sits at the action layer, not the framework layer, so it works with whatever you're using — LangChain, CrewAI, LangGraph, AutoGPT, OpenAI Assistants, or a custom setup. You build your agent with the framework of your choice, then add Vaultak on top to secure it.</div>
+</div>
+<div class="faq-item">
+  <div class="faq-question" onclick="toggleFaq(this)">
+    <span>What is CrewAI and does it have anything to do with Vaultak?</span>
+    <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+  </div>
+  <div class="faq-answer">CrewAI is an open-source framework for building multi-agent systems. It has nothing to do with Vaultak. Some developers use CrewAI to build their agents, then add Vaultak on top to secure them. The two are completely independent products.</div>
+</div>
+<div class="faq-item">
+  <div class="faq-question" onclick="toggleFaq(this)">
+    <span>Do I need to rewrite my agent to use Vaultak?</span>
+    <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+  </div>
+  <div class="faq-answer">No. You add five lines of code to wrap your agent with vt.monitor() and you're done. Everything else — policy management, monitoring, enforcement — happens inside Vaultak without any changes to your agent logic.</div>
+</div>
+<div class="faq-item">
+  <div class="faq-question" onclick="toggleFaq(this)">
+    <span>How does Vaultak know what my agent is and isn't supposed to do?</span>
+    <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+  </div>
+  <div class="faq-answer">It doesn't make that call — you do. You define the rules, and Vaultak enforces them. Think of it like a firewall: it doesn't understand what your application is trying to accomplish, it just checks every request against the rules you set and acts accordingly.</div>
+</div>
+<div class="faq-item">
+  <div class="faq-question" onclick="toggleFaq(this)">
+    <span>Is there a free way to check how risky my agent is?</span>
+    <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+  </div>
+  <div class="faq-answer">Yes. The <a href="https://vaultak.com/scan" style="color:#a89fe0;text-decoration:none;">free risk scanner at vaultak.com/scan</a> lets you describe your agent and get a 0 to 100 security score across all five risk dimensions in seconds. No account needed.</div>
+</div>
+</div>
+<script>
+function toggleFaq(el) {
+  const item = el.parentElement;
+  const isOpen = item.classList.contains("open");
+  document.querySelectorAll(".faq-item.open").forEach(i => i.classList.remove("open"));
+  if (!isOpen) item.classList.add("open");
+}
+</script>
 </section>
 <!-- END FAQ SECTION -->
 
