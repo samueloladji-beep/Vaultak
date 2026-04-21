@@ -95,13 +95,7 @@ jobs:
             "dist/VaultakSentry-1.0.3-arm64.pkg"
           rm -rf pkg_root
 
-          # Step 3: Re-sign the pkg with productsign
-          cd dist
-          productsign \
-            --sign "Developer ID Application: Samuel Oladji (R5UQZVTD4S)" \
-            VaultakSentry-1.0.3-arm64.pkg \
-            VaultakSentry-1.0.3-arm64-signed.pkg
-          mv VaultakSentry-1.0.3-arm64-signed.pkg VaultakSentry-1.0.3-arm64.pkg
+          echo "Packaging complete"
 
       - name: Notarize .pkg
         env:
