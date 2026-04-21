@@ -54,11 +54,31 @@ jobs:
 
       - name: Sign the app
         run: |
-          codesign --deep --force --verify --verbose \
-            --sign "Developer ID Application: Samuel Oladji (R5UQZVTD4S)" \
+          APP="sentry-app/dist/Vaultak Sentry.app"
+          SIGN_ID="Developer ID Application: Samuel Oladji (R5UQZVTD4S)"
+          ENTITLEMENTS="sentry-app/entitlements.plist"
+          # Sign all binaries and libraries inside the app first
+          find "$APP" -type f \( -name "*.so" -o -name "*.dylib" -o -perm +111 \) | while read f; do
+            codesign --force --verify --verbose \
+              --sign "$SIGN_ID" \
+              --options runtime \
+              --entitlements "$ENTITLEMENTS" \
+              "$f" 2>/dev/null || true
+          done
+          # Sign all frameworks
+          find "$APP" -name "*.framework" -type d | while read f; do
+            codesign --force --verify --verbose \
+              --sign "$SIGN_ID" \
+              --options runtime \
+              --entitlements "$ENTITLEMENTS" \
+              "$f" 2>/dev/null || true
+          done
+          # Sign the app bundle itself
+          codesign --force --verify --verbose \
+            --sign "$SIGN_ID" \
             --options runtime \
-            --entitlements sentry-app/entitlements.plist \
-            "sentry-app/dist/Vaultak Sentry.app"
+            --entitlements "$ENTITLEMENTS" \
+            "$APP"
 
       - name: Package .pkg
         run: |
