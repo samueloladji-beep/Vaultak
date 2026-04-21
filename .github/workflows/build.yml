@@ -40,6 +40,25 @@ jobs:
             --osx-bundle-identifier "com.vaultak.sentry" \
             vaultak_sentry_app.py
 
+      - name: Import signing certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$APPLE_CERTIFICATE" | base64 --decode > /tmp/certificate.p12
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import /tmp/certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/pkgbuild
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+
+      - name: Sign the app
+        run: |
+          codesign --deep --force --verify --verbose \
+            --sign "Developer ID Application: Samuel Oladji (R5UQZVTD4S)" \
+            --options runtime \
+            "sentry-app/dist/Vaultak Sentry.app"
+
       - name: Package .pkg
         run: |
           cd sentry-app
@@ -50,8 +69,22 @@ jobs:
             --identifier com.vaultak.sentry \
             --version 1.0.3 \
             --install-location / \
+            --sign "Developer ID Installer: Samuel Oladji (R5UQZVTD4S)" \
             "dist/VaultakSentry-1.0.3-arm64.pkg"
           rm -rf pkg_root
+
+      - name: Notarize .pkg
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit sentry-app/dist/VaultakSentry-1.0.3-arm64.pkg \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          xcrun stapler staple sentry-app/dist/VaultakSentry-1.0.3-arm64.pkg
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
