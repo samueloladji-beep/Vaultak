@@ -69,7 +69,6 @@ jobs:
             --identifier com.vaultak.sentry \
             --version 1.0.3 \
             --install-location / \
-            --sign "Developer ID Installer: Samuel Oladji (R5UQZVTD4S)" \
             "dist/VaultakSentry-1.0.3-arm64.pkg"
           rm -rf pkg_root
 
