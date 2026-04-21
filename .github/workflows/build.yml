@@ -49,79 +49,55 @@ jobs:
           security create-keychain -p "" build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "" build.keychain
-          security import /tmp/certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/pkgbuild -T /usr/bin/productsign
+          security import /tmp/certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/pkgbuild
           security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
 
-      - name: Sign and package
+      - name: Sign app and package
         run: |
           APP="sentry-app/dist/Vaultak Sentry.app"
           SIGN_ID="Developer ID Application: Samuel Oladji (R5UQZVTD4S)"
           ENTITLEMENTS="sentry-app/entitlements.plist"
 
-          # Step 1: Sign all nested binaries from inside out
-          # Sign .so files
+          # Sign all .so files
           find "$APP" -type f -name "*.so" | while read f; do
             codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$f" 2>/dev/null || true
           done
-          # Sign .dylib files
+
+          # Sign all .dylib files
           find "$APP" -type f -name "*.dylib" | while read f; do
             codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$f" 2>/dev/null || true
           done
-          # Sign all files named Python (the actual Python binary)
+
+          # Sign Python binaries
           find "$APP" -type f -name "Python" | while read f; do
-            codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$f"
+            codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$f" || true
           done
-          # Sign all other executables
+
+          # Sign all executables
           find "$APP" -type f -perm +111 ! -name "*.py" | while read f; do
             codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$f" 2>/dev/null || true
           done
-          # Sign framework bundles (deepest first)
+
+          # Sign frameworks deepest first
           find "$APP" -name "*.framework" -type d | awk '{ print length, $0 }' | sort -rn | cut -d' ' -f2- | while read f; do
             codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$f" 2>/dev/null || true
           done
-          # Sign the app bundle last
+
+          # Sign the app bundle
           codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
 
-          # Step 2: Package into .pkg preserving signatures
+          # Package using ditto to preserve signatures
           cd sentry-app
-          # Analyze bundle to generate component plist
-          pkgbuild --analyze --root "dist/Vaultak Sentry.app" component.plist || true
-          # Update plist to prevent relocation which breaks signatures
-          python3 -c "
-import plistlib, os
-if os.path.exists('component.plist'):
-    with open('component.plist', 'rb') as f:
-        pl = plistlib.load(f)
-    for item in pl:
-        item['BundleIsRelocatable'] = False
-        item.pop('BundleOverwriteAction', None)
-    with open('component.plist', 'wb') as f:
-        plistlib.dump(pl, f)
-    print('component.plist updated')
-else:
-    print('no component.plist found')
-"
           mkdir -p pkg_root/Applications
           ditto "dist/Vaultak Sentry.app" "pkg_root/Applications/Vaultak Sentry.app"
-          if [ -f component.plist ]; then
-            pkgbuild \
-              --root pkg_root \
-              --component-plist component.plist \
-              --identifier com.vaultak.sentry \
-              --version 1.0.3 \
-              --install-location / \
-              "dist/VaultakSentry-1.0.3-arm64.pkg"
-          else
-            pkgbuild \
-              --root pkg_root \
-              --identifier com.vaultak.sentry \
-              --version 1.0.3 \
-              --install-location / \
-              "dist/VaultakSentry-1.0.3-arm64.pkg"
-          fi
-          rm -rf pkg_root component.plist
-          echo "Packaging complete"
+          pkgbuild \
+            --root pkg_root \
+            --identifier com.vaultak.sentry \
+            --version 1.0.3 \
+            --install-location / \
+            "dist/VaultakSentry-1.0.3-arm64.pkg"
+          rm -rf pkg_root
 
       - name: Notarize .pkg
         env:
@@ -136,7 +112,6 @@ else:
             --wait --output-format json)
           echo "$SUBMISSION"
           SUBMISSION_ID=$(echo "$SUBMISSION" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
-          echo "Submission ID: $SUBMISSION_ID"
           xcrun notarytool log "$SUBMISSION_ID" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_PASSWORD" \
