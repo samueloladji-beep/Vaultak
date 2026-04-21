@@ -57,28 +57,37 @@ jobs:
           APP="sentry-app/dist/Vaultak Sentry.app"
           SIGN_ID="Developer ID Application: Samuel Oladji (R5UQZVTD4S)"
           ENTITLEMENTS="sentry-app/entitlements.plist"
-          # Sign all binaries and libraries inside the app first
-          find "$APP" -type f \( -name "*.so" -o -name "*.dylib" -o -perm +111 \) | while read f; do
-            codesign --force --verify --verbose \
-              --sign "$SIGN_ID" \
-              --options runtime \
-              --entitlements "$ENTITLEMENTS" \
-              "$f" 2>/dev/null || true
+          # Sign all .so and .dylib files
+          find "$APP" -type f -name "*.so" | while read f; do
+            codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$f" 2>/dev/null || true
           done
-          # Sign all frameworks
-          find "$APP" -name "*.framework" -type d | while read f; do
-            codesign --force --verify --verbose \
-              --sign "$SIGN_ID" \
-              --options runtime \
-              --entitlements "$ENTITLEMENTS" \
-              "$f" 2>/dev/null || true
+          find "$APP" -type f -name "*.dylib" | while read f; do
+            codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$f" 2>/dev/null || true
           done
-          # Sign the app bundle itself
+          # Sign Python binaries explicitly
+          find "$APP" -type f -name "Python" | while read f; do
+            codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$f" 2>/dev/null || true
+          done
+          # Sign Python framework versions
+          find "$APP" -path "*/Python.framework/Versions/*/Python" -type f | while read f; do
+            codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$f" 2>/dev/null || true
+          done
+          # Sign all executables
+          find "$APP" -type f -perm +111 | while read f; do
+            codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$f" 2>/dev/null || true
+          done
+          # Sign frameworks
+          find "$APP" -name "*.framework" -type d | sort -r | while read f; do
+            codesign --force --sign "$SIGN_ID" --options runtime --entitlements "$ENTITLEMENTS" "$f" 2>/dev/null || true
+          done
+          # Finally sign the app bundle
           codesign --force --verify --verbose \
             --sign "$SIGN_ID" \
             --options runtime \
             --entitlements "$ENTITLEMENTS" \
             "$APP"
+          # Verify
+          codesign --verify --deep --strict --verbose=2 "$APP"
 
       - name: Package .pkg
         run: |
