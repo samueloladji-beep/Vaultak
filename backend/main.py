@@ -1637,6 +1637,11 @@ def pricing_page():
     return HTMLResponse(content=html)
 
 
+@app.get("/blog", response_class=HTMLResponse)
+def blog_index():
+    with open(os.path.join(os.path.dirname(__file__), "blog_index.html")) as f:
+        return f.read()
+
 @app.get("/blog/how-to-score-your-ai-agent-security-risk")
 def blog_agent_risk_score():
     return FileResponse("blog_how-to-score-your-ai-agent-security-risk.html")
